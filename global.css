@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer base {
+  :root {
+    /* Base */
+    --background: #F3F4F6;          /* light grey global background */
+    --foreground: #111827;          /* almost-black text */
+
+    --card: #FFFFFF;                /* card putih */
+    --card-foreground: #111827;
+
+    --muted: #E5E7EB;               /* section / list background */
+    --muted-foreground: #6B7280;    /* label, subtitle */
+
+    --border: #E5E7EB;
+
+    /* Primary (untuk tombol utama & text penting) */
+    --primary: #111827;             /* hitam tua */
+    --primary-light: #4B5563;       /* abu gelap untuk hover */
+    --primary-foreground: #FFFFFF;
+
+    /* Secondary (chip, badge lembut) */
+    --secondary: #F9FAFB;
+    --secondary-foreground: #4B5563;
+
+    /* Accent (warna kartu hijau neon) */
+    --accent: #C6FF34;              /* kuning‑hijau neon seperti kartu */
+    --accent-foreground: #111827;
+
+    /* Destructive */
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+
+    /* Chart/data colors */
+    --chart-income: #16A34A;        /* hijau income */
+    --chart-rent: #EF4444;          /* merah rent */
+    --chart-expense: #FACC15;       /* kuning expense */
+    --chart-utility: #4B5563;       /* abu utilitas */
+
+    /* RGB versions for opacity support */
+    --primary-rgb: 17, 24, 39;
+    --background-rgb: 243, 244, 246;
+    --success-rgb: 22, 163, 74;
+    --destructive-rgb: 239, 68, 68;
+  }
+}
