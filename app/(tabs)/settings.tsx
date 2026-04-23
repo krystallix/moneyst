@@ -8,6 +8,7 @@ import { StatusBar } from "expo-status-bar";
 import {
     ChevronRight,
     LogOut,
+    Wallet,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
@@ -58,6 +59,13 @@ export default function SettingsTab() {
     };
 
     const items: SettingsItem[] = [
+        {
+            id: "accounts",
+            label: "Manage Accounts",
+            subtitle: "Wallets, Banks, Cards",
+            icon: <Wallet size={18} color="#5B8F85" />,
+            onPress: () => router.push("/account"),
+        },
         {
             id: "profile",
             label: "Edit Profile",

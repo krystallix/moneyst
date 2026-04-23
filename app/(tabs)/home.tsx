@@ -1,69 +1,73 @@
 import BalanceCard from "@/components/BalanceCard";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { checkProfile } from "@/lib/profile/profile";
 import { getNetWorth } from "@/lib/supabase/accounts";
 import {
-    getMonthlyStats,
-    getRecentTransactions,
+  getMonthlyStats,
+  getRecentTransactions,
+  updateTransaction,
 } from "@/lib/supabase/transactions";
 import {
-    getGreetingFromTimezone,
-    GREETING_TEXT_EN,
-    GREETING_TEXT_ID,
+  getGreetingFromTimezone,
+  GREETING_TEXT_EN,
+  GREETING_TEXT_ID,
 } from "@/lib/time/greetings";
 import { router, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import type { LucideIcon } from "lucide-react-native";
 import {
-    ArrowDownLeft,
-    ArrowLeftRight,
-    ArrowUpRight,
-    Banknote,
-    Bike,
-    BookOpen,
-    Briefcase,
-    Car,
-    Clock,
-    Coffee,
-    CreditCard,
-    Dumbbell,
-    Gift,
-    GraduationCap,
-    Heart,
-    HelpCircle,
-    Home,
-    Music,
-    Package,
-    Percent,
-    Phone,
-    Pill,
-    Pizza,
-    Plus,
-    ShoppingBag,
-    ShoppingCart,
-    Star,
-    Tag,
-    Ticket,
-    TreePalm,
-    TrendingUp,
-    Tv,
-    Utensils,
-    Wallet,
-    Wifi,
-    Zap,
+  ArrowDownLeft,
+  ArrowLeftRight,
+  ArrowUpRight,
+  Banknote,
+  Bike,
+  BookOpen,
+  Briefcase,
+  Car,
+  Clock,
+  Coffee,
+  CreditCard,
+  Dumbbell,
+  Gift,
+  GraduationCap,
+  Heart,
+  HelpCircle,
+  Home,
+  Music,
+  Package,
+  Percent,
+  Phone,
+  Pill,
+  Pizza,
+  Plus,
+  ShoppingBag,
+  ShoppingCart,
+  Star,
+  Tag,
+  Ticket,
+  Trash2,
+  TreePalm,
+  TrendingUp,
+  Tv,
+  Utensils,
+  Wallet,
+  Wifi,
+  Zap,
 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Animated,
-    Easing,
-    Image,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    Text,
-    View,
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Image,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
 } from "react-native";
+import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -137,9 +141,9 @@ function hexToRgba(hex: string | null, alpha = 0.15): string {
   const full =
     h.length === 3
       ? h
-          .split("")
-          .map((c) => c + c)
-          .join("")
+        .split("")
+        .map((c) => c + c)
+        .join("")
       : h;
   const r = parseInt(full.slice(0, 2), 16);
   const g = parseInt(full.slice(2, 4), 16);
@@ -195,9 +199,13 @@ function getCategoryIcon(iconName: string | null | undefined): LucideIcon {
 export function ActivityItem({
   tx,
   isCard = false,
+  onDelete,
+  showHint = false,
 }: {
   tx: Transaction;
   isCard?: boolean;
+  onDelete?: (tx: Transaction) => void;
+  showHint?: boolean;
 }) {
   const isIncome = tx.type === "income";
   const isTransfer = tx.is_transfer;
@@ -218,42 +226,105 @@ export function ActivityItem({
   const amountColor = isIncome ? "#2E8B57" : isTransfer ? "#5B8F85" : "#E53935";
   const prefix = isIncome ? "+" : isTransfer ? "" : "-";
 
-  return (
-    <Pressable
-      onPress={() => router.push(`/transaction/${tx.id}`)}
-      className={`flex-row items-center py-2.5 ps-2 pe-3 active:opacity-70 ${isCard ? "bg-white rounded-[24px] mb-3 shadow-[0_2px_8px_rgba(0,0,0,0.02)]" : "rounded-[24px]"}`}
-    >
-      {/* Icon badge */}
+  // ── Swipeable ref for programmatic control ────────────────────────────────
+  const swipeableRef = useRef<any>(null);
+  const isOpenRef = useRef(false);
+
+  // ── Hint animation: peek-open then close after 600ms ─────────────────────
+  useEffect(() => {
+    if (!showHint || !onDelete) return;
+    const timer = setTimeout(() => {
+      swipeableRef.current?.openRight();
+      const closeTimer = setTimeout(() => {
+        swipeableRef.current?.close();
+      }, 700);
+      return () => clearTimeout(closeTimer);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [showHint, onDelete]);
+
+  const handleSwipeOpen = () => { isOpenRef.current = true; };
+  const handleSwipeClose = () => { isOpenRef.current = false; };
+
+  const handleCardPress = () => {
+    if (isOpenRef.current) {
+      swipeableRef.current?.close();
+      return;
+    }
+    router.push(`/transaction/${tx.id}`);
+  };
+
+  const renderRightActions = () => {
+    if (!onDelete) return null;
+    return (
       <View
-        className="w-12 h-12 rounded-full items-center justify-center mr-3.5"
-        style={{ backgroundColor: bgColor }}
+        className={`bg-[#FF4C4C] justify-center items-end ${isCard ? 'mb-3' : ''}`}
+        style={isCard ? {
+          width: 250,
+          marginLeft: -190,
+          borderRadius: 24,
+          paddingLeft: 24,
+          zIndex: 1,
+        } : {
+          width: 64,
+          borderRadius: 20,
+          marginLeft: 8,
+        }}
       >
-        <IconComp size={20} color={catColor} strokeWidth={2.5} />
+        <Pressable onPress={() => onDelete(tx)} className={`flex-1 justify-center left-24 items-center w-full h-full active:opacity-70 ${isCard ? 'pr-2' : ''}`}>
+          <Trash2 size={24} color="#FFFFFF" strokeWidth={2} />
+        </Pressable>
       </View>
+    );
+  };
 
-      {/* Info */}
-      <View className="flex-1">
-        <Text
-          className="text-foreground text-sm font-bold tracking-tight"
-          numberOfLines={1}
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      friction={2}
+      rightThreshold={40}
+      containerStyle={{ overflow: 'visible' }}
+      onSwipeableOpen={handleSwipeOpen}
+      onSwipeableClose={handleSwipeClose}
+    >
+      <Pressable
+        onPress={handleCardPress}
+        className={`flex-row items-center py-2.5 ps-2 pe-3 active:opacity-70 ${isCard ? "bg-white rounded-[24px] mb-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)]" : "bg-white rounded-[24px]"}`}
+        style={isCard ? { elevation: 2 } : { elevation: 1 }}
+      >
+        {/* Icon badge */}
+        <View
+          className="w-12 h-12 rounded-full items-center justify-center mr-3.5"
+          style={{ backgroundColor: bgColor }}
         >
-          {label}
-        </Text>
-        <Text className="text-secondary-foreground text-xs font-medium mt-0.5">
-          {tx.accounts?.name ? `${tx.accounts.name} · ` : ""}
-          {cat?.name ? `${cat.name} · ` : ""}
-          {formatDate(tx.date)}
-        </Text>
-      </View>
+          <IconComp size={20} color={catColor} strokeWidth={2.5} />
+        </View>
 
-      {/* Amount */}
-      <Text
-        className="text-sm font-bold pl-2 tracking-tight"
-        style={{ color: amountColor }}
-      >
-        {prefix}Rp {formatAmount(Number(tx.amount), tx.currency)}
-      </Text>
-    </Pressable>
+        {/* Info */}
+        <View className="flex-1">
+          <Text
+            className="text-foreground text-sm font-bold tracking-tight"
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+          <Text className="text-secondary-foreground text-xs font-medium mt-0.5">
+            {tx.accounts?.name ? `${tx.accounts.name} · ` : ""}
+            {cat?.name ? `${cat.name} · ` : ""}
+            {formatDate(tx.date)}
+          </Text>
+        </View>
+
+        {/* Amount */}
+        <Text
+          className="text-sm font-bold pl-2 tracking-tight"
+          style={{ color: amountColor }}
+        >
+          {prefix}Rp {formatAmount(Number(tx.amount), tx.currency)}
+        </Text>
+      </Pressable>
+    </Swipeable>
   );
 }
 
@@ -288,6 +359,8 @@ export default function HomeScreen() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [txLoading, setTxLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [deletingTx, setDeletingTx] = useState<Transaction | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -334,6 +407,24 @@ export default function HomeScreen() {
       fetchData();
     }, [user, authLoading, fetchData]),
   );
+
+  const handleDeleteTransaction = async () => {
+    if (!deletingTx) return;
+    try {
+      setIsDeleting(true);
+      await updateTransaction(deletingTx.id, { is_deleted: true });
+      // Update local state to remove the item immediately
+      setTransactions((prev) => prev.filter((t) => t.id !== deletingTx.id));
+      setDeletingTx(null);
+      // Let the triggers handle the balance update, we can refresh later if needed
+      // but for snappiness, we just optimistic delete. If the user wants full refresh:
+      fetchData(true);
+    } catch (e: any) {
+      console.warn("Could not delete tx", e);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -429,7 +520,7 @@ export default function HomeScreen() {
               currency={currency}
               month={currentMonth}
               loading={statsLoading}
-              // onSeeAll={() => router.push("/(tabs)/reports")}
+            // onSeeAll={() => router.push("/(tabs)/reports")}
             />
           </View>
 
@@ -469,13 +560,24 @@ export default function HomeScreen() {
             ) : transactions.length === 0 ? (
               <EmptyActivity />
             ) : (
-              transactions.map((tx) => (
-                <ActivityItem key={tx.id} tx={tx} isCard />
+              transactions.map((tx, index) => (
+                <ActivityItem key={tx.id} tx={tx} isCard onDelete={(t) => setDeletingTx(t)} showHint={index === 0} />
               ))
             )}
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      <ConfirmModal
+        visible={!!deletingTx}
+        title="Delete Transaction"
+        description={`Are you sure you want to delete "${deletingTx?.description || "this transaction"}"?`}
+        confirmText="Delete"
+        isDestructive={true}
+        loading={isDeleting}
+        onCancel={() => setDeletingTx(null)}
+        onConfirm={handleDeleteTransaction}
+      />
     </View>
   );
 }

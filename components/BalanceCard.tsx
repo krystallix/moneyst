@@ -1,6 +1,7 @@
+import { router } from "expo-router";
 import ArrowDownLeft from "@/assets/icons/arrow-down-left.svg";
 import ArrowUpRight from "@/assets/icons/arrow-up-right.svg";
-import { EyeOff } from "lucide-react-native";
+import { EyeOff, CreditCard } from "lucide-react-native";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
@@ -65,20 +66,29 @@ export default function BalanceCard({
                 style={{ backgroundColor: "#EEFF66" }}
                 className="rounded-[24px] px-5 pt-6 pb-10 w-full"
             >
-                {/* Month label + hide button */}
+                {/* Month label + right actions */}
                 <View className="flex-row items-center justify-between mb-4">
                     <Text className="text-[#1A1A1A]/50 text-[11px] font-bold uppercase tracking-widest">
                         {currentMonth}
                     </Text>
-                    <Pressable
-                        onPress={() => {
-                            setHidden((h) => !h);
-                            onToggleVisibility?.();
-                        }}
-                        className="w-8 h-8 rounded-full bg-[#1A1A1A]/10 items-center justify-center active:opacity-70"
-                    >
-                        <EyeOff size={15} color="#1A1A1A" strokeWidth={2} />
-                    </Pressable>
+                    <View className="flex-row items-center gap-2">
+                        <Pressable
+                            onPress={() => router.push("/account")}
+                            className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1A1A1A]/10 active:opacity-70 h-8"
+                        >
+                            <CreditCard size={14} color="#1A1A1A" strokeWidth={2} />
+                            <Text className="text-[#1A1A1A] text-[10px] font-bold uppercase">See Cards</Text>
+                        </Pressable>
+                        <Pressable
+                            onPress={() => {
+                                setHidden((h) => !h);
+                                onToggleVisibility?.();
+                            }}
+                            className="w-8 h-8 rounded-full bg-[#1A1A1A]/10 items-center justify-center active:opacity-70"
+                        >
+                            <EyeOff size={15} color="#1A1A1A" strokeWidth={2} />
+                        </Pressable>
+                    </View>
                 </View>
 
                 {/* Currency */}

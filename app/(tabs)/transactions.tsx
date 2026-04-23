@@ -1,7 +1,8 @@
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { checkProfile } from "@/lib/profile/profile";
-import { getTransactionsByDate } from "@/lib/supabase/transactions";
+import { getTransactionsByDate, updateTransaction } from "@/lib/supabase/transactions";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ChevronDown, ListOrdered, Plus } from "lucide-react-native";
@@ -57,6 +58,22 @@ export default function TransactionsScreen() {
   const [loading, setLoading] = useState(true);
 
   const [showPicker, setShowPicker] = useState(false);
+  const [deletingTx, setDeletingTx] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteTransaction = async () => {
+    if (!deletingTx) return;
+    try {
+      setIsDeleting(true);
+      await updateTransaction(deletingTx.id, { is_deleted: true });
+      setTransactions((prev) => prev.filter((t) => t.id !== deletingTx.id));
+      setDeletingTx(null);
+    } catch (e: any) {
+      console.warn("Could not delete tx", e);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const timezone = profile?.timezone ?? "Asia/Jakarta";
 
@@ -380,7 +397,7 @@ export default function TransactionsScreen() {
             ) : (
               transactions.map((tx, index) => (
                 <View key={tx.id}>
-                  <ActivityItem tx={tx} />
+                  <ActivityItem tx={tx} onDelete={(t) => setDeletingTx(t)} />
                   {index < transactions.length - 1 && (
                     <View className="h-[1px] bg-border/40 mx-4 mb-2" />
                   )}
@@ -390,6 +407,17 @@ export default function TransactionsScreen() {
           </ScrollView>
         </View>
       </SafeAreaView>
+
+      <ConfirmModal
+        visible={!!deletingTx}
+        title="Delete Transaction"
+        description={`Are you sure you want to delete "${deletingTx?.description || "this transaction"}"?`}
+        confirmText="Delete"
+        isDestructive={true}
+        loading={isDeleting}
+        onCancel={() => setDeletingTx(null)}
+        onConfirm={handleDeleteTransaction}
+      />
     </View>
   );
 }

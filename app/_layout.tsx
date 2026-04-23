@@ -7,6 +7,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import "react-native-reanimated";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import SplashAnimation from "@/components/SplashAnimation";
 import { AuthProvider, useAuth } from "@/lib/auth/AuthContext";
@@ -15,9 +16,11 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
     return (
-        <AuthProvider>
-            <RootLayoutInner />
-        </AuthProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <AuthProvider>
+                <RootLayoutInner />
+            </AuthProvider>
+        </GestureHandlerRootView>
     );
 }
 
@@ -43,9 +46,11 @@ function RootLayoutInner() {
     }, [fontsLoaded, authLoading, user]);
 
     const handleSplashFinish = () => {
-        const target = isLoggedInRef.current ? "/" : "/get-started";
-        router.replace(target);
-        setTimeout(() => setShowCustomSplash(false), 100);
+        setTimeout(() => {
+            const target = isLoggedInRef.current ? "/" : "/get-started";
+            router.replace(target);
+            setTimeout(() => setShowCustomSplash(false), 100);
+        }, 0);
     };
 
     return (
@@ -54,7 +59,6 @@ function RootLayoutInner() {
                 <Stack.Screen name="index" />
                 <Stack.Screen name="get-started" />
                 <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="new" options={{ presentation: "modal" }} />
                 <Stack.Screen name="(auth)/sign-in" />
                 <Stack.Screen name="(auth)/forgot-password" />
                 <Stack.Screen name="(auth)/check-email" />

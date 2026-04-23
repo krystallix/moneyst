@@ -1,3 +1,5 @@
+import { ConfirmModal } from "@/components/ConfirmModal";
+import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { checkProfile } from "@/lib/profile/profile";
 import { getAccounts } from "@/lib/supabase/accounts";
@@ -6,16 +8,15 @@ import { getTransactionById, updateTransaction } from "@/lib/supabase/transactio
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as Icons from "lucide-react-native";
-import { Check, ChevronLeft, StickyNote } from "lucide-react-native";
-import { CustomDatePicker } from "@/components/CustomDatePicker";
+import { Check, ChevronLeft } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
     ActivityIndicator,
+    Alert,
     Animated,
     Dimensions,
     Modal,
-    Platform,
     Pressable,
     ScrollView,
     Text,
@@ -80,6 +81,20 @@ export default function EditScreen() {
     const [saved, setSaved] = useState(false);
     const [catSheetOpen, setCatSheetOpen] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+
+    const handleDeleteConfirm = async () => {
+        try {
+            setDeleting(true);
+            setShowConfirmDelete(false);
+            await updateTransaction(params.id as string, { is_deleted: true });
+            router.back();
+        } catch (e: any) {
+            Alert.alert("Error", e?.message ?? "Could not delete transaction.");
+            setDeleting(false);
+        }
+    };
 
     // Parse passedDate into a Date object
     const initDate = (() => {
@@ -107,7 +122,7 @@ export default function EditScreen() {
                 setCategories(cats);
                 const accs = await getAccounts(user.id);
                 setAccounts(accs);
-                
+
                 const txId = params.id as string;
                 if (txId) {
                     const tx = await getTransactionById(txId);
@@ -257,15 +272,14 @@ export default function EditScreen() {
                         <Pressable
                             onPress={handleSave}
                             disabled={!canSave}
-                            className={`w-10 h-10 rounded-xl items-center justify-center ${
-                                saved ? 'bg-green-500' : canSave ? 'bg-primary active:opacity-70' : 'bg-muted'
-                            }`}
+                            className={`w-10 h-10 rounded-xl items-center justify-center ${saved ? 'bg-green-500' : canSave ? 'bg-primary active:opacity-70' : 'bg-muted'
+                                }`}
                         >
                             {submitting
                                 ? <ActivityIndicator size="small" color="#fff" />
                                 : saved
-                                ? <Check size={18} color="#fff" strokeWidth={3} />
-                                : <Check size={18} color={canSave ? "#fff" : "#9ca3af"} strokeWidth={2.5} />}
+                                    ? <Check size={18} color="#fff" strokeWidth={3} />
+                                    : <Check size={18} color={canSave ? "#fff" : "#9ca3af"} strokeWidth={2.5} />}
                         </Pressable>
                     </View>
                 </View>
@@ -370,11 +384,11 @@ export default function EditScreen() {
                                             selectedDate.getFullYear() === yesterday.getFullYear() &&
                                             selectedDate.getMonth() === yesterday.getMonth() &&
                                             selectedDate.getDate() === yesterday.getDate();
-                                        
+
                                         if (isToday) return "Today";
                                         if (isYesterday) return "Yesterday";
-                                        return selectedDate.toLocaleDateString("en-US", { 
-                                            month: "short", 
+                                        return selectedDate.toLocaleDateString("en-US", {
+                                            month: "short",
                                             day: "numeric",
                                             ...(selectedDate.getFullYear() !== today.getFullYear() && { year: "numeric" })
                                         });
@@ -558,10 +572,37 @@ export default function EditScreen() {
                                 ))}
                             </View>
                         ))}
+
+                        {/* DELETE BUTTON */}
+                        <Pressable
+                            onPress={() => setShowConfirmDelete(true)}
+                            disabled={submitting || deleting}
+                            className="flex-row items-center justify-center gap-2 py-4 rounded-2xl bg-destructive/10 active:opacity-70 mt-2 mb-2"
+                        >
+                            {deleting ? (
+                                <ActivityIndicator size="small" color="#E53935" />
+                            ) : (
+                                <>
+                                    <Icons.Trash2 size={18} color="#E53935" strokeWidth={2.5} />
+                                    <Text className="text-[#E53935] font-bold text-sm">Delete Transaction</Text>
+                                </>
+                            )}
+                        </Pressable>
                     </View>
                 </View>
 
             </SafeAreaView>
+
+            <ConfirmModal
+                visible={showConfirmDelete}
+                title="Delete Transaction"
+                description="Are you sure you want to delete this transaction?"
+                confirmText="Delete"
+                isDestructive={true}
+                loading={deleting}
+                onCancel={() => setShowConfirmDelete(false)}
+                onConfirm={handleDeleteConfirm}
+            />
         </View>
     );
 }
