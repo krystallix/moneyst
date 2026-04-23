@@ -1,0 +1,218 @@
+[
+  {
+    "value": "Hawaiian Standard Time",
+    "abbr": "HST",
+    "offset": -10,
+    "isdst": false,
+    "text": "(UTC-10:00) Hawaii",
+    "utc": ["Pacific/Honolulu"]
+  },
+  {
+    "value": "Alaskan Standard Time",
+    "abbr": "AKDT",
+    "offset": -8,
+    "isdst": true,
+    "text": "(UTC-09:00) Alaska",
+    "utc": ["America/Anchorage"]
+  },
+  {
+    "value": "Pacific Standard Time",
+    "abbr": "PST",
+    "offset": -8,
+    "isdst": false,
+    "text": "(UTC-08:00) Pacific Time (US & Canada)",
+    "utc": ["America/Los_Angeles", "America/Vancouver"]
+  },
+  {
+    "value": "Mountain Standard Time",
+    "abbr": "MDT",
+    "offset": -6,
+    "isdst": true,
+    "text": "(UTC-07:00) Mountain Time (US & Canada)",
+    "utc": ["America/Denver", "America/Edmonton"]
+  },
+  {
+    "value": "Central Standard Time",
+    "abbr": "CDT",
+    "offset": -5,
+    "isdst": true,
+    "text": "(UTC-06:00) Central Time (US & Canada)",
+    "utc": ["America/Chicago", "America/Winnipeg"]
+  },
+  {
+    "value": "Central Standard Time (Mexico)",
+    "abbr": "CDT",
+    "offset": -5,
+    "isdst": true,
+    "text": "(UTC-06:00) Mexico City",
+    "utc": ["America/Mexico_City"]
+  },
+  {
+    "value": "Eastern Standard Time",
+    "abbr": "EST",
+    "offset": -5,
+    "isdst": false,
+    "text": "(UTC-05:00) Eastern Time (US & Canada)",
+    "utc": ["America/New_York", "America/Toronto"]
+  },
+  {
+    "value": "SA Pacific Standard Time",
+    "abbr": "SPST",
+    "offset": -5,
+    "isdst": false,
+    "text": "(UTC-05:00) Bogota, Lima",
+    "utc": ["America/Bogota", "America/Lima"]
+  },
+  {
+    "value": "Atlantic Standard Time",
+    "abbr": "ADT",
+    "offset": -3,
+    "isdst": true,
+    "text": "(UTC-04:00) Atlantic Time (Canada)",
+    "utc": ["America/Halifax"]
+  },
+  {
+    "value": "E. South America Standard Time",
+    "abbr": "ESAST",
+    "offset": -3,
+    "isdst": false,
+    "text": "(UTC-03:00) Brasilia",
+    "utc": ["America/Sao_Paulo"]
+  },
+  {
+    "value": "Argentina Standard Time",
+    "abbr": "AST",
+    "offset": -3,
+    "isdst": false,
+    "text": "(UTC-03:00) Buenos Aires",
+    "utc": ["America/Argentina/Buenos_Aires"]
+  },
+  {
+    "value": "UTC",
+    "abbr": "UTC",
+    "offset": 0,
+    "isdst": false,
+    "text": "(UTC) Coordinated Universal Time",
+    "utc": ["Etc/GMT"]
+  },
+  {
+    "value": "GMT Standard Time",
+    "abbr": "GMT",
+    "offset": 0,
+    "isdst": false,
+    "text": "(UTC) London",
+    "utc": ["Europe/London"]
+  },
+  {
+    "value": "W. Europe Standard Time",
+    "abbr": "WEDT",
+    "offset": 2,
+    "isdst": true,
+    "text": "(UTC+01:00) Amsterdam, Berlin, Rome, Paris",
+    "utc": ["Europe/Amsterdam", "Europe/Berlin", "Europe/Rome", "Europe/Paris"]
+  },
+  {
+    "value": "Turkey Standard Time",
+    "abbr": "TDT",
+    "offset": 3,
+    "isdst": false,
+    "text": "(UTC+03:00) Istanbul",
+    "utc": ["Europe/Istanbul"]
+  },
+  {
+    "value": "Moscow Standard Time",
+    "abbr": "MSK",
+    "offset": 3,
+    "isdst": false,
+    "text": "(UTC+03:00) Moscow",
+    "utc": ["Europe/Moscow"]
+  },
+  {
+    "value": "Arabian Standard Time",
+    "abbr": "AST",
+    "offset": 4,
+    "isdst": false,
+    "text": "(UTC+04:00) Dubai, Abu Dhabi",
+    "utc": ["Asia/Dubai"]
+  },
+  {
+    "value": "India Standard Time",
+    "abbr": "IST",
+    "offset": 5.5,
+    "isdst": false,
+    "text": "(UTC+05:30) Mumbai, New Delhi",
+    "utc": ["Asia/Kolkata"]
+  },
+  {
+    "value": "Bangladesh Standard Time",
+    "abbr": "BST",
+    "offset": 6,
+    "isdst": false,
+    "text": "(UTC+06:00) Dhaka",
+    "utc": ["Asia/Dhaka"]
+  },
+  {
+    "value": "SE Asia Standard Time",
+    "abbr": "SAST",
+    "offset": 7,
+    "isdst": false,
+    "text": "(UTC+07:00) Bangkok, Jakarta, Hanoi",
+    "utc": ["Asia/Bangkok", "Asia/Jakarta", "Asia/Saigon"]
+  },
+  {
+    "value": "Singapore Standard Time",
+    "abbr": "SGT",
+    "offset": 8,
+    "isdst": false,
+    "text": "(UTC+08:00) Singapore, Kuala Lumpur",
+    "utc": ["Asia/Singapore", "Asia/Kuala_Lumpur"]
+  },
+  {
+    "value": "China Standard Time",
+    "abbr": "CST",
+    "offset": 8,
+    "isdst": false,
+    "text": "(UTC+08:00) Beijing, Shanghai, Hong Kong",
+    "utc": ["Asia/Shanghai", "Asia/Hong_Kong"]
+  },
+  {
+    "value": "W. Australia Standard Time",
+    "abbr": "AWST",
+    "offset": 8,
+    "isdst": false,
+    "text": "(UTC+08:00) Perth",
+    "utc": ["Australia/Perth"]
+  },
+  {
+    "value": "Japan Standard Time",
+    "abbr": "JST",
+    "offset": 9,
+    "isdst": false,
+    "text": "(UTC+09:00) Tokyo, Osaka",
+    "utc": ["Asia/Tokyo"]
+  },
+  {
+    "value": "Korea Standard Time",
+    "abbr": "KST",
+    "offset": 9,
+    "isdst": false,
+    "text": "(UTC+09:00) Seoul",
+    "utc": ["Asia/Seoul"]
+  },
+  {
+    "value": "AUS Eastern Standard Time",
+    "abbr": "AEST",
+    "offset": 10,
+    "isdst": false,
+    "text": "(UTC+10:00) Sydney, Melbourne",
+    "utc": ["Australia/Sydney", "Australia/Melbourne"]
+  },
+  {
+    "value": "New Zealand Standard Time",
+    "abbr": "NZST",
+    "offset": 12,
+    "isdst": false,
+    "text": "(UTC+12:00) Auckland, Wellington",
+    "utc": ["Pacific/Auckland"]
+  }
+]
