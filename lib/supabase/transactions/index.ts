@@ -55,6 +55,10 @@ export const getRecentTransactions = async (userId: string, limit = 10) => {
                 icon,
                 color,
                 type
+            ),
+            accounts:account_id (
+                id,
+                name
             )
         `)
         .eq('user_id', userId)
@@ -89,6 +93,10 @@ export const getTransactionsByDate = async (userId: string, targetDate: string) 
                 icon,
                 color,
                 type
+            ),
+            accounts:account_id (
+                id,
+                name
             )
         `)
         .eq('user_id', userId)

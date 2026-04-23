@@ -2,7 +2,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { checkProfile } from "@/lib/profile/profile";
 import { getAccounts } from "@/lib/supabase/accounts";
 import { Category, getCategories } from "@/lib/supabase/categories";
-import { addTransaction } from "@/lib/supabase/transactions";
+import { getTransactionById, updateTransaction } from "@/lib/supabase/transactions";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as Icons from "lucide-react-native";
@@ -60,7 +60,7 @@ function buildLocalDate(tz: string): Date {
 }
 
 // ─── main ─────────────────────────────────────────────────────────────────────
-export default function NewScreen() {
+export default function EditScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const passedDate = params?.date as string | undefined;
@@ -107,14 +107,29 @@ export default function NewScreen() {
                 setCategories(cats);
                 const accs = await getAccounts(user.id);
                 setAccounts(accs);
-                if (accs.length > 0) setAccountId(accs[0].id);
+                
+                const txId = params.id as string;
+                if (txId) {
+                    const tx = await getTransactionById(txId);
+                    if (tx) {
+                        setType(tx.type as "expense" | "income");
+                        typeAnim.setValue(tx.type === "income" ? 1 : 0);
+                        setAmountStr(String(tx.amount));
+                        setNotes(tx.description || "");
+                        setCategoryId(tx.category_id);
+                        setAccountId(tx.account_id);
+                        if (tx.date) setSelectedDate(new Date(tx.date));
+                    }
+                } else if (accs.length > 0) {
+                    setAccountId(accs[0].id);
+                }
             } catch (err) {
                 console.error("Init error:", err);
             } finally {
                 setLoading(false);
             }
         })();
-    }, [user]);
+    }, [user, params.id, typeAnim]);
 
     // ── type switch ───────────────────────────────────────────────────────────
     const switchType = useCallback((next: "expense" | "income") => {
@@ -173,8 +188,7 @@ export default function NewScreen() {
                 return;
             }
 
-            await addTransaction({
-                user_id: user.id,
+            const payload = {
                 account_id: accountId,
                 type,
                 amount: amnt,
@@ -183,9 +197,10 @@ export default function NewScreen() {
                 category_id: categoryId,
                 date: dateStr,
                 time: timeStr,
-                is_transfer: false,
-                is_deleted: false,
-            });
+            };
+            console.log("Updating transaction payload:", payload);
+            const res = await updateTransaction(params.id as string, payload);
+            console.log("Update transaction result:", res);
 
             setSaved(true);
             setTimeout(() => {
@@ -199,7 +214,7 @@ export default function NewScreen() {
             console.error("Save error", error);
             setSubmitting(false);
         }
-    }, [amountStr, categoryId, accountId, selectedDate, user, submitting, profile, type, notes, router, accounts]);
+    }, [amountStr, categoryId, accountId, selectedDate, user, submitting, profile, type, notes, router, accounts, params.id]);
 
     // ── derived ───────────────────────────────────────────────────────────────
     const isExpense = type === "expense";
@@ -236,7 +251,7 @@ export default function NewScreen() {
                         </Pressable>
                     </View>
                     <Text style={{ fontFamily: "Handjet_700Bold" }} className="text-foreground text-3xl">
-                        New Transaction
+                        Edit Transaction
                     </Text>
                     <View className="absolute right-6">
                         <Pressable
