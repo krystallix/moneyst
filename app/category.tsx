@@ -1,3 +1,4 @@
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { deleteCategory, getCategories, type Category } from "@/lib/supabase/categories";
 import { router, useFocusEffect } from "expo-router";
@@ -139,6 +140,10 @@ export default function CategoryScreen() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    
+    // Modal state
+    const [confirmDeleteCat, setConfirmDeleteCat] = useState<Category | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const load = useCallback(async (isRefresh = false) => {
         if (!user) return;
@@ -161,25 +166,21 @@ export default function CategoryScreen() {
     );
 
     const handleDelete = (cat: Category) => {
-        Alert.alert(
-            "Delete category",
-            `Are you sure you want to delete "${cat.name}"?`,
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            await deleteCategory(cat.id);
-                            setCategories(prev => prev.filter(c => c.id !== cat.id));
-                        } catch {
-                            Alert.alert("Error", "Could not delete category.");
-                        }
-                    },
-                },
-            ]
-        );
+        setConfirmDeleteCat(cat);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!confirmDeleteCat) return;
+        setIsDeleting(true);
+        try {
+            await deleteCategory(confirmDeleteCat.id);
+            setCategories(prev => prev.filter(c => c.id !== confirmDeleteCat.id));
+            setConfirmDeleteCat(null);
+        } catch {
+            Alert.alert("Error", "Could not delete category.");
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     // Group by type
@@ -265,6 +266,17 @@ export default function CategoryScreen() {
                     />
                 )}
             </SafeAreaView>
+
+            <ConfirmModal
+                visible={!!confirmDeleteCat}
+                title="Delete Category"
+                description={confirmDeleteCat ? `Are you sure you want to delete "${confirmDeleteCat.name}"? This action cannot be undone.` : ""}
+                confirmText="Delete"
+                isDestructive={true}
+                loading={isDeleting}
+                onCancel={() => setConfirmDeleteCat(null)}
+                onConfirm={handleDeleteConfirm}
+            />
         </View>
     );
 }
