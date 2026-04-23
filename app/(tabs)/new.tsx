@@ -1,129 +1,132 @@
-import { useAuth } from "@/lib/auth/AuthContext";
-import { checkProfile } from "@/lib/profile/profile";
-import { getGreetingFromTimezone, GREETING_TEXT_EN, GREETING_TEXT_ID } from "@/lib/time/greetings";
-import { router } from "expo-router";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
+import { router, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Image, Pressable, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ChevronLeft, Image as ImageIcon } from "lucide-react-native";
+import { useCallback, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
-type AppProfile = {
-    id: string;
-    full_name: string | null;
-    timezone: string | null;
-    avatar_url: string | null;
-    locale: string | null;
-};
+export default function NewTransactionCamera() {
+    const [permission, requestPermission] = useCameraPermissions();
+    const insets = useSafeAreaInsets();
+    
+    // We can track if camera is active to unmount it when tab changes
+    const [isActive, setIsActive] = useState(false);
 
-export default function ReportScreen() {
-    const { user, loading } = useAuth();
-    const [username, setUsername] = useState<string | null>(null);
-    const [timezone, setTimezone] = useState<string>("Asia/Jakarta");
-    const [locale, setLocale] = useState<string>("en-US");
-    const [avatar, setAvatar] = useState<string | null>(null);
-
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(20)).current;
-
-    useEffect(() => {
-        if (loading) return;
-        if (!user) return;
-
-        const fetchProfile = async () => {
-            const { data: profile } = await checkProfile(user) as {
-                data: AppProfile | null;
-                error: any;
+    useFocusEffect(
+        useCallback(() => {
+            setIsActive(true);
+            return () => {
+                setIsActive(false);
             };
+        }, [])
+    );
 
-            if (!profile) {
-                router.replace("/onboarding/profile");
+    if (!permission) {
+        return <View className="flex-1 bg-black" />;
+    }
+
+    if (!permission.granted) {
+        return (
+            <SafeAreaView className="flex-1 bg-black items-center justify-center">
+                <Text className="text-white mb-4 text-center px-8">
+                    We need your permission to access the camera to capture receipts.
+                </Text>
+                <Pressable
+                    onPress={requestPermission}
+                    className="bg-primary px-5 py-3 rounded-xl active:opacity-70"
+                >
+                    <Text className="text-white font-semibold">Grant Permission</Text>
+                </Pressable>
+                
+                <Pressable
+                    onPress={() => router.push("/(tabs)/home")}
+                    className="mt-6"
+                >
+                    <Text className="text-white/60">Cancel</Text>
+                </Pressable>
+            </SafeAreaView>
+        );
+    }
+
+    const handleBack = () => {
+        router.push("/(tabs)/home");
+    };
+
+    const handleGallery = async () => {
+        try {
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permissionResult.granted) {
+                alert("Permission to access gallery is required.");
                 return;
             }
 
-            setUsername(profile.full_name ?? user.user_metadata?.full_name ?? null);
-            setTimezone(profile.timezone ?? "Asia/Jakarta");
-            setAvatar(profile.avatar_url ?? null);
-            setLocale(profile.locale ?? "en-US");
-        };
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ["images"],
+                quality: 1,
+            });
 
-        fetchProfile();
-    }, [user, loading]);
+            if (!result.canceled) {
+                // Dummy: simply navigate back after selecting image
+                alert("Image selected from gallery! (Dummy action)");
+                router.push("/(tabs)/home");
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
 
-    useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 500,
-                easing: Easing.out(Easing.cubic),
-                useNativeDriver: true,
-            }),
-            Animated.timing(slideAnim, {
-                toValue: 0,
-                duration: 500,
-                easing: Easing.out(Easing.cubic),
-                useNativeDriver: true,
-            }),
-        ]).start();
-    }, []);
-
-    const greetingKey = getGreetingFromTimezone({ timezone, locale });
-    const greetingText =
-        locale.startsWith("id")
-            ? GREETING_TEXT_ID[greetingKey]
-            : GREETING_TEXT_EN[greetingKey];
-
-    const avatarSource =
-        avatar && avatar.length > 0
-            ? { uri: avatar }
-            : require("@/assets/images/default-avatar.png");
+    const handleCapture = () => {
+        // Dummy capture action
+        alert("Photo captured! (Dummy action)");
+        router.push("/(tabs)/home");
+    };
 
     return (
-        <View className="flex-1 bg-white">
-            <StatusBar style="dark" />
+        <View className="flex-1 bg-black">
+            <StatusBar style="light" />
+            
+            {isActive ? (
+                <CameraView style={StyleSheet.absoluteFillObject} facing="back">
+                    <SafeAreaView className="flex-1 justify-between" edges={['top']}>
+                        {/* Top actions */}
+                        <View className="flex-row items-center justify-between px-6 pt-4">
+                            <Pressable
+                                onPress={handleBack}
+                                className="w-12 h-12 items-center justify-center rounded-full bg-black/30 active:bg-black/50 backdrop-blur-md"
+                            >
+                                <ChevronLeft size={26} color="#FFFFFF" strokeWidth={2.5} />
+                            </Pressable>
 
-            <SafeAreaView className="flex-1">
-                {/* Header */}
-                <View className="px-6 pt-5 pb-2 flex flex-row justify-between items-center">
-                    <Animated.View
-                        style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
-                    >
-                        <Text
-                            style={{ fontFamily: "Handjet_700Bold" }}
-                            className="text-[#1A1A1A] text-2xl"
+                            <Pressable
+                                onPress={handleGallery}
+                                className="w-12 h-12 items-center justify-center rounded-full bg-black/30 active:bg-black/50 backdrop-blur-md"
+                            >
+                                <ImageIcon size={22} color="#FFFFFF" strokeWidth={2} />
+                            </Pressable>
+                        </View>
+
+                        {/* Bottom actions container */}
+                        <View 
+                            className="bg-white rounded-t-[36px] pt-8 px-6 items-center shadow-lg w-full"
+                            style={{ paddingBottom: Math.max(insets.bottom + 20, 40) }}
                         >
-                            {greetingText},
-                        </Text>
-                        <Text className="text-[#555555] text-xs">
-                            {username}
-                        </Text>
-                    </Animated.View>
-
-                    <Animated.View style={{ opacity: fadeAnim }}>
-                        <Pressable
-                            onPress={() => router.push("/settings/user-settings")}
-                            className="rounded-xl overflow-hidden"
-                        >
-                            <Image source={avatarSource} className="w-10 h-10 rounded-xl" />
-                        </Pressable>
-                    </Animated.View>
-                </View>
-
-                {/* Main content */}
-                <View className="flex-1 px-6 pt-4 items-center justify-center gap-3">
-                    <View
-                        className="w-16 h-16 rounded-2xl items-center justify-center"
-                        style={{ backgroundColor: "rgba(91,143,133,0.12)" }}
-                    >
-                        <Text style={{ fontSize: 28 }}>📊</Text>
-                    </View>
-                    <Text className="text-[#1A1A1A] text-base font-semibold text-center">
-                        Reports coming soon
-                    </Text>
-                    <Text className="text-[#555555] text-sm text-center">
-                        Spending charts and monthly breakdowns will appear here.
-                    </Text>
-                </View>
-            </SafeAreaView>
+                            <Pressable
+                                onPress={handleCapture}
+                                className="w-20 h-20 rounded-full border-[6px] border-gray-200 items-center justify-center active:opacity-70"
+                            >
+                                <View className="w-14 h-14 rounded-full bg-gray-300" />
+                            </Pressable>
+                            <Text className="text-gray-400 font-medium mt-4 text-sm tracking-wide">
+                                Capture Receipt
+                            </Text>
+                        </View>
+                    </SafeAreaView>
+                </CameraView>
+            ) : (
+                <View className="flex-1 bg-black" />
+            )}
         </View>
     );
 }

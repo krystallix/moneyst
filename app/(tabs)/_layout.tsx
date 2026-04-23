@@ -80,6 +80,11 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
     // Default safe padding or an extra 10px if needed
     const paddingBottom = insets.bottom > 0 ? insets.bottom + 4 : 16;
 
+    const activeRouteName = state.routes[state.index].name;
+    if (activeRouteName === 'new') {
+        return null; // Hide tab bar on camera screen
+    }
+
     return (
         <View style={{ backgroundColor: '#f7f7f7' }}>
             <View style={[styles.tabBarContainer, { paddingBottom }]}>
