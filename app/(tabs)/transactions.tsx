@@ -1,20 +1,20 @@
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { CustomDatePicker } from "@/components/CustomDatePicker";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { checkProfile } from "@/lib/profile/profile";
-import { getTransactionsByDate, updateTransaction } from "@/lib/supabase/transactions";
-import { ConfirmModal } from "@/components/ConfirmModal";
+import { deleteTransaction, getTransactionsByDate } from "@/lib/supabase/transactions";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ChevronDown, ListOrdered, Plus } from "lucide-react-native";
+import { ChevronDown, ListOrdered, Plus, Search } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Animated,
-    PanResponder,
-    Pressable,
-    ScrollView,
-    Text,
-    View,
+  ActivityIndicator,
+  Animated,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ActivityItem } from "./home";
@@ -65,7 +65,7 @@ export default function TransactionsScreen() {
     if (!deletingTx) return;
     try {
       setIsDeleting(true);
-      await updateTransaction(deletingTx.id, { is_deleted: true });
+      await deleteTransaction(deletingTx.id);
       setTransactions((prev) => prev.filter((t) => t.id !== deletingTx.id));
       setDeletingTx(null);
     } catch (e: any) {
@@ -282,6 +282,12 @@ export default function TransactionsScreen() {
               </Pressable>
             )}
             <Pressable
+              onPress={() => router.push('/transaction/search')}
+              className="w-10 h-10 rounded-xl items-center justify-center bg-secondary/20 active:opacity-70"
+            >
+              <Search size={20} color="#2F2F2F" strokeWidth={2.5} />
+            </Pressable>
+            <Pressable
               onPress={() =>
                 router.push(
                   `/transaction/new?date=${formatDateKey(selectedDate)}`,
@@ -387,9 +393,9 @@ export default function TransactionsScreen() {
                   You don't have any transactions recorded for{" "}
                   {!isNaN(selectedDate.getTime())
                     ? selectedDate.toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                      })
+                      month: "long",
+                      day: "numeric",
+                    })
                     : "this date"}
                   .
                 </Text>
@@ -397,7 +403,7 @@ export default function TransactionsScreen() {
             ) : (
               transactions.map((tx, index) => (
                 <View key={tx.id}>
-                  <ActivityItem tx={tx} onDelete={(t) => setDeletingTx(t)} />
+                  <ActivityItem tx={tx} isCard onDelete={(t) => setDeletingTx(t)} />
                   {index < transactions.length - 1 && (
                     <View className="h-[1px] bg-border/40 mx-4 mb-2" />
                   )}

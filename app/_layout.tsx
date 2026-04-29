@@ -6,8 +6,8 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
-import "react-native-reanimated";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import "react-native-reanimated";
 
 import SplashAnimation from "@/components/SplashAnimation";
 import { AuthProvider, useAuth } from "@/lib/auth/AuthContext";
@@ -64,9 +64,22 @@ function RootLayoutInner() {
                 <Stack.Screen name="(auth)/check-email" />
                 <Stack.Screen name="onboarding/profile" />
                 <Stack.Screen
-                    name="settings/user-settings"
+                    name="settings/index"
                     options={{ presentation: "card" }}
                 />
+                <Stack.Screen
+                    name="budget/new"
+                    options={{ presentation: "card" }}
+                />
+                <Stack.Screen name="transaction/search" />
+                <Stack.Screen name="account/new" />
+                <Stack.Screen name="account/[id]" />
+                <Stack.Screen name="transaction/new" />
+                <Stack.Screen name="transaction/[id]" />
+                <Stack.Screen name="category/new" />
+                <Stack.Screen name="category/[id]" />
+                <Stack.Screen name="budget/[id]" options={{ presentation: "card" }} />
+                <Stack.Screen name="receipt/review" options={{ presentation: "card" }} />
             </Stack>
 
             {(showCustomSplash || !appReady) && (

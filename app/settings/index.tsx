@@ -1,4 +1,3 @@
-import Setting from "@/assets/icons/setting.svg";
 import User from "@/assets/icons/user.svg";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getProfile } from "@/lib/profile/profile";
@@ -6,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
+    ChevronLeft,
     ChevronRight,
     LogOut,
     Wallet,
@@ -58,36 +58,42 @@ export default function SettingsTab() {
         }
     };
 
+    // Replace direct router.push calls with deferred ones
+    const navigate = (path: string) => {
+        setTimeout(() => router.push(path as any), 0);
+    };
+
     const items: SettingsItem[] = [
         {
             id: "accounts",
             label: "Manage Accounts",
             subtitle: "Wallets, Banks, Cards",
             icon: <Wallet size={18} color="#5B8F85" />,
-            onPress: () => router.push("/account"),
+            onPress: () => navigate("/account"),
         },
         {
             id: "profile",
             label: "Edit Profile",
             subtitle: "Name, photo, timezone",
             icon: <User width={18} color="#5B8F85" />,
-            onPress: () => router.push("/settings/user-settings"),
-        },
-        {
-            id: "preferences",
-            label: "App Preferences",
-            subtitle: "Currency, language",
-            icon: <Setting width={18} color="#5B8F85" />,
-            onPress: () => router.push("/settings/user-settings"),
+            onPress: () => navigate("/settings/user-settings"),
         },
     ];
 
     return (
-        <View className="flex-1 bg-white">
+        <View className="flex-1 bg-background">
             <StatusBar style="dark" />
 
             <SafeAreaView className="flex-1">
-                <View className="px-6 pt-5 pb-2">
+                <View className="px-6 pt-5 pb-2 flex-row items-center justify-center relative">
+                    <View className="absolute left-6">
+                        <Pressable
+                            onPress={() => { router.back() }}
+                            className="w-10 h-10 rounded-xl items-center justify-center active:opacity-70 border border-border"
+                        >
+                            <ChevronLeft size={20} color="#1A1A1A" strokeWidth={2.5} />
+                        </Pressable>
+                    </View>
                     <Text
                         style={{ fontFamily: "Handjet_700Bold" }}
                         className="text-[#1A1A1A] text-3xl"
@@ -98,13 +104,13 @@ export default function SettingsTab() {
 
                 {/* Profile card */}
                 <Pressable
-                    onPress={() => router.push("/settings/user-settings")}
+                    onPress={() => navigate("/settings/user-settings")}
                     className="mx-6 mt-4 mb-5 flex-row items-center gap-4 rounded-[24px] px-5 py-5 active:opacity-80 bg-white"
                     style={{ shadowColor: "rgba(0,0,0,0.02)", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 8 }}
                 >
                     <View
                         className="w-14 h-14 rounded-full overflow-hidden"
-                        style={{ borderWidth: 2, borderColor: "#D6EDE6" }}
+                        style={{ borderWidth: 2, borderColor: "#f1f1f1" }}
                     >
                         <Image
                             source={avatarSource}
@@ -122,9 +128,9 @@ export default function SettingsTab() {
                     </View>
                     <View
                         className="w-8 h-8 rounded-xl items-center justify-center"
-                        style={{ backgroundColor: "rgba(91,143,133,0.12)" }}
+                        style={{ backgroundColor: "#f1f1f1" }}
                     >
-                        <ChevronRight size={16} color="#5B8F85" strokeWidth={2.5} />
+                        <ChevronRight size={16} color="#020202" strokeWidth={2.5} />
                     </View>
                 </Pressable>
 
@@ -139,7 +145,7 @@ export default function SettingsTab() {
                             onPress={item.onPress}
                             className="flex-row items-center gap-4 px-5 py-4 active:opacity-70"
                             style={[
-                                index < items.length - 1 ? { borderBottomWidth: 1, borderBottomColor: "#D6EDE6" } : {},
+                                index < items.length - 1 ? { borderBottomWidth: 1, borderBottomColor: "#f1f1f1" } : {},
                             ]}
                         >
                             <View

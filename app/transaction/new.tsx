@@ -1,6 +1,6 @@
 import { useAuth } from "@/lib/auth/AuthContext";
 import { checkProfile } from "@/lib/profile/profile";
-import { getAccounts } from "@/lib/supabase/accounts";
+import { getAccounts, updateAccount } from "@/lib/supabase/accounts";
 import { Category, getCategories } from "@/lib/supabase/categories";
 import { addTransaction } from "@/lib/supabase/transactions";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -68,11 +68,12 @@ export default function NewScreen() {
     const insets = useSafeAreaInsets();
 
     const [profile, setProfile] = useState<any>(null);
-    const [type, setType] = useState<"expense" | "income">("expense");
+    const [type, setType] = useState<"expense" | "income" | "transfer">("expense");
     const [amountStr, setAmountStr] = useState("0");
     const [notes, setNotes] = useState("");
     const [categoryId, setCategoryId] = useState<string>("");
     const [accountId, setAccountId] = useState<string>("");
+    const [toAccountId, setToAccountId] = useState<string>("");
     const [categories, setCategories] = useState<Category[]>([]);
     const [accounts, setAccounts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -117,10 +118,10 @@ export default function NewScreen() {
     }, [user]);
 
     // ── type switch ───────────────────────────────────────────────────────────
-    const switchType = useCallback((next: "expense" | "income") => {
+    const switchType = useCallback((next: "expense" | "income" | "transfer") => {
         if (next === type) return;
         Animated.spring(typeAnim, {
-            toValue: next === "income" ? 1 : 0,
+            toValue: next === "income" ? 1 : next === "transfer" ? 2 : 0,
             useNativeDriver: false,
             stiffness: 260,
             damping: 24,
@@ -153,7 +154,10 @@ export default function NewScreen() {
 
     // ── save ──────────────────────────────────────────────────────────────────
     const handleSave = useCallback(async () => {
-        if (amountStr === "0" || !categoryId || !user || submitting) return;
+        if (amountStr === "0" || !user || submitting) return;
+        if (type === "transfer" && (!accountId || !toAccountId || accountId === toAccountId)) return;
+        if (type !== "transfer" && (!categoryId || !accountId)) return;
+        
         setSubmitting(true);
         try {
             const amnt = parseFloat(amountStr);
@@ -167,31 +171,75 @@ export default function NewScreen() {
 
             const timeStr = `${pad(localDate.getHours())}:${pad(localDate.getMinutes())}:${pad(localDate.getSeconds())}`;
 
-            if (!accountId) {
-                console.error("No account selected");
-                setSubmitting(false);
-                return;
-            }
+            if (type === "transfer") {
+                const transferPairId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+                
+                await addTransaction({
+                    user_id: user.id,
+                    account_id: accountId,
+                    to_account_id: toAccountId,
+                    type: "expense",
+                    amount: amnt,
+                    currency,
+                    description: notes.trim() || "Transfer",
+                    category_id: null,
+                    date: dateStr,
+                    time: timeStr,
+                    is_transfer: true,
+                    transfer_pair_id: transferPairId,
+                    is_deleted: false,
+                });
+                
+                await addTransaction({
+                    user_id: user.id,
+                    account_id: toAccountId,
+                    type: "income",
+                    amount: amnt,
+                    currency,
+                    description: notes.trim() || "Transfer",
+                    category_id: null,
+                    date: dateStr,
+                    time: timeStr,
+                    is_transfer: true,
+                    transfer_pair_id: transferPairId,
+                    is_deleted: false,
+                });
 
-            await addTransaction({
-                user_id: user.id,
-                account_id: accountId,
-                type,
-                amount: amnt,
-                currency,
-                description: notes.trim(),
-                category_id: categoryId,
-                date: dateStr,
-                time: timeStr,
-                is_transfer: false,
-                is_deleted: false,
-            });
+                const fromAcc = accounts.find(a => a.id === accountId);
+                const toAcc = accounts.find(a => a.id === toAccountId);
+                if (fromAcc) await updateAccount(fromAcc.id, { current_balance: Number(fromAcc.current_balance) - amnt });
+                if (toAcc) await updateAccount(toAcc.id, { current_balance: Number(toAcc.current_balance) + amnt });
+            } else {
+                await addTransaction({
+                    user_id: user.id,
+                    account_id: accountId,
+                    type,
+                    amount: amnt,
+                    currency,
+                    description: notes.trim(),
+                    category_id: categoryId,
+                    date: dateStr,
+                    time: timeStr,
+                    is_transfer: false,
+                    is_deleted: false,
+                });
+                
+                const acc = accounts.find(a => a.id === accountId);
+                if (acc) {
+                    const diff = type === "expense" ? -amnt : amnt;
+                    await updateAccount(acc.id, { current_balance: Number(acc.current_balance) + diff });
+                }
+            }
 
             setSaved(true);
             setTimeout(() => {
                 setAmountStr("0");
                 setCategoryId("");
                 setNotes("");
+                setToAccountId("");
                 setSaved(false);
                 router.replace(`/(tabs)/transactions?date=${dateStr}`);
             }, 700);
@@ -199,19 +247,21 @@ export default function NewScreen() {
             console.error("Save error", error);
             setSubmitting(false);
         }
-    }, [amountStr, categoryId, accountId, selectedDate, user, submitting, profile, type, notes, router, accounts]);
+    }, [amountStr, categoryId, accountId, toAccountId, selectedDate, user, submitting, profile, type, notes, router, accounts]);
 
     // ── derived ───────────────────────────────────────────────────────────────
     const isExpense = type === "expense";
-    const typeColor = isExpense ? "#FF3B30" : "#34C759";
+    const isTransfer = type === "transfer";
+    const typeColor = isExpense ? "#FF3B30" : isTransfer ? "#5B8F85" : "#34C759";
     const filteredCats = categories.filter(c => c.type === type);
     const currencySym = profile?.preferred_currency ?? "IDR";
-    const canSave = amountStr !== "0" && !!categoryId && !!accountId && !submitting && !saved;
+    const canSave = amountStr !== "0" && !submitting && !saved && 
+        (isTransfer ? !!accountId && !!toAccountId && accountId !== toAccountId : !!categoryId && !!accountId);
 
     const [intPart, decPart] = amountStr.split(".");
     const formattedInt = parseInt(intPart || "0", 10).toLocaleString("en-US");
     const displayAmount = decPart !== undefined ? `${formattedInt}.${decPart}` : formattedInt;
-    const pillLeft = typeAnim.interpolate({ inputRange: [0, 1], outputRange: ["2%", "50%"] });
+    const pillLeft = typeAnim.interpolate({ inputRange: [0, 1, 2], outputRange: ["1.5%", "34.5%", "65.5%"] });
 
     const keyRows = [
         ["1", "2", "3"],
@@ -261,7 +311,7 @@ export default function NewScreen() {
                         <Animated.View style={{
                             position: "absolute",
                             top: 3, left: pillLeft,
-                            width: "48%", bottom: 3,
+                            width: "33%", bottom: 3,
                             backgroundColor: "#FFFFFF",
                             borderRadius: 12,
                             shadowColor: "#000",
@@ -275,7 +325,7 @@ export default function NewScreen() {
                             activeOpacity={0.8}
                             className="flex-1 py-2.5 items-center flex-row justify-center gap-1.5"
                         >
-                            <Text className={`font-semibold text-sm ${isExpense ? 'text-[#000000]' : 'text-[#8E8E93]'}`}>
+                            <Text className={`font-semibold text-sm ${type === 'expense' ? 'text-[#000000]' : 'text-[#8E8E93]'}`}>
                                 Expense
                             </Text>
                         </TouchableOpacity>
@@ -284,8 +334,17 @@ export default function NewScreen() {
                             activeOpacity={0.8}
                             className="flex-1 py-2.5 items-center flex-row justify-center gap-1.5"
                         >
-                            <Text className={`font-semibold text-sm ${!isExpense ? 'text-[#000000]' : 'text-[#8E8E93]'}`}>
+                            <Text className={`font-semibold text-sm ${type === 'income' ? 'text-[#000000]' : 'text-[#8E8E93]'}`}>
                                 Income
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => switchType("transfer")}
+                            activeOpacity={0.8}
+                            className="flex-1 py-2.5 items-center flex-row justify-center gap-1.5"
+                        >
+                            <Text className={`font-semibold text-sm ${type === 'transfer' ? 'text-[#000000]' : 'text-[#8E8E93]'}`}>
+                                Transfer
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -409,7 +468,9 @@ export default function NewScreen() {
                             </Text>
                         ) : (
                             <>
-                                <Text className="px-5 text-[10px] font-bold text-muted-foreground mb-2 tracking-widest uppercase">Account</Text>
+                                <Text className="px-5 text-[10px] font-bold text-muted-foreground mb-2 tracking-widest uppercase">
+                                    {isTransfer ? "From Account" : "Account"}
+                                </Text>
                                 <ScrollView
                                     horizontal
                                     showsHorizontalScrollIndicator={false}
@@ -431,13 +492,44 @@ export default function NewScreen() {
                                         );
                                     })}
                                 </ScrollView>
+
+                                {isTransfer && (
+                                    <>
+                                        <Text className="px-5 text-[10px] font-bold text-muted-foreground mb-2 mt-4 tracking-widest uppercase">
+                                            To Account
+                                        </Text>
+                                        <ScrollView
+                                            horizontal
+                                            showsHorizontalScrollIndicator={false}
+                                            contentContainerStyle={{ gap: 6, paddingHorizontal: 20 }}
+                                        >
+                                            {accounts.map(acc => {
+                                                const Icon = getSafeIcon(acc.icon || "Wallet");
+                                                const isSel = toAccountId === acc.id;
+                                                const col = acc.color || "#111827";
+                                                return (
+                                                    <AccountChip
+                                                        key={`to-${acc.id}`}
+                                                        acc={acc}
+                                                        Icon={Icon}
+                                                        isSel={isSel}
+                                                        col={col}
+                                                        onPress={() => setToAccountId(acc.id)}
+                                                    />
+                                                );
+                                            })}
+                                        </ScrollView>
+                                    </>
+                                )}
                             </>
                         )}
                     </View>
 
                     {/* CATEGORY SELECTOR — chip row + more drawer */}
-                    <View style={{ marginBottom: 14 }}>
-                        {loading ? (
+                    {!isTransfer && (
+                        <>
+                            <View style={{ marginBottom: 14 }}>
+                                {loading ? (
                             <ActivityIndicator color={typeColor} style={{ paddingVertical: 12 }} />
                         ) : filteredCats.length === 0 ? (
                             <Text className="text-center text-muted-foreground py-3 text-[14px]">
@@ -525,10 +617,11 @@ export default function NewScreen() {
                             setCategoryId(id);
                             setCatSheetOpen(false);
                         }}
-                        onClose={() => setCatSheetOpen(false)}
-                        typeColor={typeColor}
-                    />
-
+                            onClose={() => setCatSheetOpen(false)}
+                                typeColor={typeColor}
+                            />
+                        </>
+                    )}
 
                     {/* KEYPAD */}
                     <View className="px-5">

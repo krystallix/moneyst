@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { checkProfile } from "@/lib/profile/profile";
 import { getAccounts } from "@/lib/supabase/accounts";
 import { Category, getCategories } from "@/lib/supabase/categories";
-import { getTransactionById, updateTransaction } from "@/lib/supabase/transactions";
+import { deleteTransaction, getTransactionById, updateTransaction } from "@/lib/supabase/transactions";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as Icons from "lucide-react-native";
@@ -88,7 +88,7 @@ export default function EditScreen() {
         try {
             setDeleting(true);
             setShowConfirmDelete(false);
-            await updateTransaction(params.id as string, { is_deleted: true });
+            await deleteTransaction(params.id as string);
             router.back();
         } catch (e: any) {
             Alert.alert("Error", e?.message ?? "Could not delete transaction.");

@@ -4,9 +4,9 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { checkProfile } from "@/lib/profile/profile";
 import { getNetWorth } from "@/lib/supabase/accounts";
 import {
+  deleteTransaction,
   getMonthlyStats,
   getRecentTransactions,
-  updateTransaction,
 } from "@/lib/supabase/transactions";
 import {
   getGreetingFromTimezone,
@@ -89,6 +89,13 @@ type Category = {
   type: string;
 };
 
+type Split = {
+  id: string;
+  amount: number;
+  description: string | null;
+  categories: { id: string; name: string; icon: string | null; color: string | null } | null;
+};
+
 type Transaction = {
   id: string;
   type: string;
@@ -100,6 +107,7 @@ type Transaction = {
   is_transfer: boolean;
   categories: Category | null;
   accounts: { id: string; name: string } | null;
+  splits?: Split[] | null;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -210,19 +218,23 @@ export function ActivityItem({
   const isIncome = tx.type === "income";
   const isTransfer = tx.is_transfer;
   const cat = tx.categories;
+  const hasSplits = !cat && tx.splits && tx.splits.length > 0;
 
+  // ── Icon / color for the main row ─────────────────────────────────────────
   const catColor =
-    cat?.color ?? (isIncome ? "#2E8B57" : isTransfer ? "#5B8F85" : "#E53935");
+    cat?.color ?? (isIncome ? "#2E8B57" : isTransfer ? "#5B8F85" : "#6366F1");
   const bgColor = hexToRgba(catColor, 0.12);
 
   const IconComp = isTransfer
     ? ArrowLeftRight
     : isIncome
       ? ArrowDownLeft
-      : getCategoryIcon(cat?.icon);
+      : hasSplits
+        ? Tag
+        : getCategoryIcon(cat?.icon);
 
   const label =
-    tx.description || cat?.name || (isTransfer ? "Transfer" : tx.type);
+    tx.description || (hasSplits ? "Split transaction" : cat?.name) || (isTransfer ? "Transfer" : tx.type);
   const amountColor = isIncome ? "#2E8B57" : isTransfer ? "#5B8F85" : "#E53935";
   const prefix = isIncome ? "+" : isTransfer ? "" : "-";
 
@@ -290,39 +302,75 @@ export function ActivityItem({
     >
       <Pressable
         onPress={handleCardPress}
-        className={`flex-row items-center py-2.5 ps-2 pe-3 active:opacity-70 ${isCard ? "bg-white rounded-[24px] mb-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)]" : "bg-white rounded-[24px]"}`}
-        style={isCard ? { elevation: 2 } : { elevation: 1 }}
+        className={`ps-2 pe-3 active:opacity-70 ${isCard ? "bg-white rounded-[24px] mb-3" : "bg-white rounded-[24px]"}`}
+        style={isCard ? { elevation: 0 } : { elevation: 0 }}
       >
-        {/* Icon badge */}
-        <View
-          className="w-12 h-12 rounded-full items-center justify-center mr-3.5"
-          style={{ backgroundColor: bgColor }}
-        >
-          <IconComp size={20} color={catColor} strokeWidth={2.5} />
-        </View>
-
-        {/* Info */}
-        <View className="flex-1">
-          <Text
-            className="text-foreground text-sm font-bold tracking-tight"
-            numberOfLines={1}
+        {/* ── Main row ── */}
+        <View className="flex-row items-center py-2.5">
+          {/* Icon badge */}
+          <View
+            className="w-12 h-12 rounded-full items-center justify-center mr-3.5"
+            style={{ backgroundColor: bgColor }}
           >
-            {label}
-          </Text>
-          <Text className="text-secondary-foreground text-xs font-medium mt-0.5">
-            {tx.accounts?.name ? `${tx.accounts.name} · ` : ""}
-            {cat?.name ? `${cat.name} · ` : ""}
-            {formatDate(tx.date)}
+            <IconComp size={20} color={catColor} strokeWidth={2.5} />
+          </View>
+
+          {/* Info */}
+          <View className="flex-1">
+            <Text
+              className="text-foreground text-sm font-bold tracking-tight"
+              numberOfLines={1}
+            >
+              {label}
+            </Text>
+            <Text className="text-secondary-foreground text-xs font-medium mt-0.5">
+              {tx.accounts?.name ? `${tx.accounts.name} · ` : ""}
+              {!hasSplits && cat?.name ? `${cat.name} · ` : ""}
+              {hasSplits ? `${tx.splits!.length} splits · ` : ""}
+              {formatDate(tx.date)}
+            </Text>
+          </View>
+
+          {/* Amount */}
+          <Text
+            className="text-sm font-bold pl-2 tracking-tight"
+            style={{ color: amountColor }}
+          >
+            {prefix}Rp {formatAmount(Number(tx.amount), tx.currency)}
           </Text>
         </View>
 
-        {/* Amount */}
-        <Text
-          className="text-sm font-bold pl-2 tracking-tight"
-          style={{ color: amountColor }}
-        >
-          {prefix}Rp {formatAmount(Number(tx.amount), tx.currency)}
-        </Text>
+        {/* ── Split sub-rows ── */}
+        {hasSplits && (
+          <View className="ml-[60px] mb-2.5 gap-1.5">
+            {tx.splits!.map((split, i) => {
+              const splitCat = split.categories;
+              const splitColor = splitCat?.color ?? "#9CA3AF";
+              const SplitIcon = getCategoryIcon(splitCat?.icon);
+              const isLast = i === tx.splits!.length - 1;
+              return (
+                <View
+                  key={split.id}
+                  className={`flex-row items-center ${isLast ? '' : 'border-b border-gray-100 pb-1.5'}`}
+                >
+                  {/* Connector dot */}
+                  <View
+                    className="w-5 h-5 rounded-full items-center justify-center mr-2"
+                    style={{ backgroundColor: hexToRgba(splitColor, 0.14) }}
+                  >
+                    <SplitIcon size={11} color={splitColor} strokeWidth={2.5} />
+                  </View>
+                  <Text className="flex-1 text-[12px] font-semibold text-secondary-foreground" numberOfLines={1}>
+                    {split.description || splitCat?.name || "Split"}
+                  </Text>
+                  <Text className="text-[12px] font-bold" style={{ color: amountColor }}>
+                    -{formatAmount(Number(split.amount), tx.currency)}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
       </Pressable>
     </Swipeable>
   );
@@ -412,7 +460,7 @@ export default function HomeScreen() {
     if (!deletingTx) return;
     try {
       setIsDeleting(true);
-      await updateTransaction(deletingTx.id, { is_deleted: true });
+      await deleteTransaction(deletingTx.id);
       // Update local state to remove the item immediately
       setTransactions((prev) => prev.filter((t) => t.id !== deletingTx.id));
       setDeletingTx(null);
@@ -503,7 +551,7 @@ export default function HomeScreen() {
               className="flex-row items-center gap-3"
             >
               <Pressable
-                onPress={() => router.push("/(tabs)/settings")}
+                onPress={() => router.push("/settings")}
                 className="rounded-xl overflow-hidden"
               >
                 <Image source={avatarSource} className="w-10 h-10 rounded-xl" />

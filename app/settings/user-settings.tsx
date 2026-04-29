@@ -2,16 +2,41 @@ import { AvatarPicker } from "@/components/AvatarPicker";
 import timezones from "@/constant/timezones.json";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getProfile, updateProfile } from "@/lib/profile/profile";
-import { supabase } from "@/lib/supabase";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Check, ChevronLeft, Clock, Mail, Pencil } from "lucide-react-native";
+import { Check, ChevronLeft, ChevronRight, Clock, Globe, Mail, Pencil } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import {
+    ActivityIndicator,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Pill, SectionLabel, TimezonePickerModal } from "../onboarding/profile";
+import { TimezonePickerModal } from "../onboarding/profile";
+
+const C = {
+    primary: "#5B8F85",
+    primaryBg: "rgba(91,143,133,0.12)",
+    border: "#EBEBEB",
+    textMain: "#1A1A1A",
+    textMuted: "#AAAAAA",
+    textSecondary: "#666666",
+    surface: "#F7F7F7",
+    white: "#ffffff",
+} as const;
 
 const CURRENCY_OPTIONS = ["IDR", "USD", "EUR"] as const;
+const CURRENCY_SYMBOLS: Record<(typeof CURRENCY_OPTIONS)[number], string> = {
+    IDR: "Rp",
+    USD: "$",
+    EUR: "€",
+};
 
 const LOCALES = [
     { code: "id-ID", label: "Indonesia", flag: "🇮🇩" },
@@ -19,30 +44,80 @@ const LOCALES = [
     { code: "en-GB", label: "English (UK)", flag: "🇬🇧" },
 ] as const;
 
-const CURRENCY_SYMBOLS: Record<(typeof CURRENCY_OPTIONS)[number], string> = {
-    IDR: "Rp",
-    USD: "$",
-    EUR: "€",
-};
-
 type LocaleCode = (typeof LOCALES)[number]["code"];
-
-type TimezoneOption = {
-    id: string;
-    label: string;
-    offset: number;
-};
+type TimezoneOption = { id: string; label: string; offset: number };
 type TimezoneItem = {
-    value: string;
-    abbr: string;
-    offset: number;
-    isdst: boolean;
-    text: string;
-    utc: string[];
+    value: string; abbr: string; offset: number;
+    isdst: boolean; text: string; utc: string[];
 };
+
+// ─── Reusable sub-components ───────────────────────────────────────────────
+
+function GroupLabel({ children }: { children: string }) {
+    return (
+        <Text
+            className="text-xs font-semibold tracking-widest uppercase px-1 mb-2"
+            style={{ color: C.textMuted }}
+        >
+            {children}
+        </Text>
+    );
+}
+
+function SettingRow({
+    label,
+    value,
+    onPress,
+    icon,
+    last = false,
+}: {
+    label: string;
+    value?: string;
+    onPress?: () => void;
+    icon?: React.ReactNode;
+    last?: boolean;
+}) {
+    const Inner = (
+        <View
+            className="flex-row items-center px-4 py-3.5"
+            style={!last ? { borderBottomWidth: 1, borderBottomColor: C.border } : undefined}
+        >
+            {icon && <View className="mr-3">{icon}</View>}
+            <Text className="flex-1 text-sm font-medium" style={{ color: C.textMain }}>
+                {label}
+            </Text>
+            {value ? (
+                <Text className="text-sm mr-2" style={{ color: C.textMuted }} numberOfLines={1}>
+                    {value}
+                </Text>
+            ) : null}
+            {onPress && <ChevronRight size={16} color={C.textMuted} />}
+        </View>
+    );
+
+    if (!onPress) return Inner;
+    return (
+        <Pressable onPress={onPress} className="active:opacity-60">
+            {Inner}
+        </Pressable>
+    );
+}
+
+function Card({ children }: { children: React.ReactNode }) {
+    return (
+        <View
+            className="rounded-2xl overflow-hidden"
+            style={{ backgroundColor: C.white, borderWidth: 1, borderColor: C.border }}
+        >
+            {children}
+        </View>
+    );
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 
 export default function UserSettings() {
-    const { user, loading: authLoading } = useAuth();
+    const { user } = useAuth();
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [fullName, setFullName] = useState<string | null>(null);
     const [email, setEmail] = useState("");
@@ -54,17 +129,17 @@ export default function UserSettings() {
     const [formError, setFormError] = useState<string | null>(null);
     const [isTimezoneOpen, setIsTimezoneOpen] = useState(false);
     const [isAvatarOpen, setIsAvatarOpen] = useState(false);
+    const [nameEditing, setNameEditing] = useState(false);
 
-    // Initial fetch from DB
     useEffect(() => {
         if (!user) return;
-
         getProfile(user.id).then(({ data }) => {
             if (data) {
                 setAvatarUrl(data.avatar_url ?? null);
                 setFullName(data.full_name ?? null);
                 setEmail(data.email ?? "");
-                if (data.preferred_currency) setPreferredCurrency(data.preferred_currency as any);
+                if (data.preferred_currency)
+                    setPreferredCurrency(data.preferred_currency as any);
                 if (data.timezone) setTimezone(data.timezone);
                 if (data.locale) setLocale(data.locale as LocaleCode);
             }
@@ -78,67 +153,37 @@ export default function UserSettings() {
 
     const timezoneOptions: TimezoneOption[] = useMemo(() => {
         const raw = (timezones as TimezoneItem[]).flatMap((tz) =>
-            tz.utc.map((u) => ({
-                id: u,
-                label: `${tz.text} - ${u}`,
-                offset: tz.offset,
-            })),
+            tz.utc.map((u) => ({ id: u, label: `${tz.text} - ${u}`, offset: tz.offset }))
         );
-
         const seen = new Set<string>();
-        const unique = raw.filter((item) => {
-            if (seen.has(item.id)) return false;
-            seen.add(item.id);
-            return true;
-        });
-
-        return unique.sort(
-            (a, b) => a.offset - b.offset || a.label.localeCompare(b.label),
-        );
+        return raw
+            .filter((item) => {
+                if (seen.has(item.id)) return false;
+                seen.add(item.id);
+                return true;
+            })
+            .sort((a, b) => a.offset - b.offset || a.label.localeCompare(b.label));
     }, []);
 
     const selectedTimezoneLabel = useMemo(() => {
         const found = timezoneOptions.find((t) => t.id === timezone);
         if (!found) return timezone;
-        const offset =
-            found.offset >= 0 ? `+${found.offset}` : `${found.offset}`;
-        return `${timezone}  ·  UTC${offset}`;
+        const sign = found.offset >= 0 ? "+" : "";
+        return `${timezone}  (UTC${sign}${found.offset})`;
     }, [timezoneOptions, timezone]);
 
-    // Redirect jika tidak ada session
-    useEffect(() => {
-        if (authLoading) return;
-        if (!user) {
-            router.replace("/get-started");
-            return;
-        }
-    }, [user, authLoading]);
+    const selectedLocaleLabel = LOCALES.find((l) => l.code === locale);
 
     const handleSave = async () => {
         try {
             setLoading(true);
             setFormError(null);
-
-            if (!user) {
-                router.replace("/get-started");
-                return;
-            }
-
+            if (!user) return;
             const { error } = await updateProfile(
-                user,
-                fullName ?? "",
-                avatarUrl,
-                preferredCurrency,
-                timezone,
-                locale
+                user, fullName ?? "", avatarUrl, preferredCurrency, timezone, locale
             );
-
-            if (error) {
-                setFormError(error.message);
-                return;
-            }
-
-            router.replace("/");
+            if (error) { setFormError(error.message); return; }
+            router.back();
         } catch (err: any) {
             setFormError(err.message ?? "An error occurred.");
         } finally {
@@ -146,216 +191,218 @@ export default function UserSettings() {
         }
     };
 
-    const handleLogout = async () => {
-        setLoading(true);
-        try {
-            await supabase.auth.signOut();
-        } catch (e) {
-            console.error("Logout error", e);
-            setLoading(false);
-        }
-    };
-
     return (
-        <View className="flex-1 bg-white">
+        <View className="flex-1" style={{ backgroundColor: C.surface }}>
             <StatusBar style="dark" />
-
             <SafeAreaView className="flex-1">
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "android" ? "padding" : "height"}
                     className="flex-1"
                 >
+                    {/* ── Header ── */}
+                    <View className="px-6 pt-5 pb-3 flex-row items-center justify-center relative">
+                        <View className="absolute left-6">
+                            <Pressable
+                                onPress={() => { router.back() }}
+                                className="w-10 h-10 rounded-xl items-center justify-center active:opacity-70 border border-border"
+                            >
+                                <ChevronLeft size={20} color="#1A1A1A" strokeWidth={2.5} />
+                            </Pressable>
+                        </View>
+                        <Text
+                            className="text-3xl"
+                            style={{ color: C.textMain, fontFamily: "Handjet_700Bold" }}
+                        >
+                            Account
+                        </Text>
+                        <View className="absolute right-6">
+                            <Pressable
+                                onPress={handleSave}
+                                disabled={loading}
+                                className={`w-10 h-10 rounded-xl items-center justify-center ${!loading ? 'bg-primary' : 'bg-muted'}`}
+                            >
+                                {loading
+                                    ? <ActivityIndicator size="small" color="#fff" />
+                                    : <Check size={18} color={"#fff"} strokeWidth={2.5} />}
+                            </Pressable>
+                        </View>
+                    </View>
+
                     <ScrollView
-                        contentContainerStyle={{ paddingBottom: 40 }}
+                        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 48 }}
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
                     >
-                        {/* Back button + title */}
-                        <View className="px-6 pt-4 pb-2 flex-row items-center justify-center relative">
-                            <View className="absolute left-6">
-                                <Pressable
-                                    onPress={() => { router.back() }}
-                                    className="p-2.5 rounded-xl border border-border bg-secondary items-center justify-center"
+                        {/* ── Avatar + Identity ── */}
+                        <View
+                            className="rounded-2xl p-4 mb-6 flex-row items-center gap-4"
+                            style={{ backgroundColor: C.white, borderWidth: 1, borderColor: C.border }}
+                        >
+                            {/* Avatar */}
+                            <Pressable
+                                onPress={() => setIsAvatarOpen(true)}
+                                className="relative active:opacity-70"
+                            >
+                                <View
+                                    className="w-16 h-16 rounded-full overflow-hidden"
+                                    style={{ borderWidth: 2, borderColor: C.border }}
                                 >
-                                    <ChevronLeft size={18} strokeWidth={2} className="text-foreground" />
-                                </Pressable>
-                            </View>
-                            <Text style={{ fontFamily: "Handjet_700Bold" }} className="text-foreground text-3xl">
-                                User Settings
-                            </Text>
-                        </View>
-
-                        {/* Avatar */}
-                        <View className="items-center mt-8 mb-6">
-                            <View className="relative">
-                                <View className="w-24 h-24 rounded-full border-2 border-border overflow-hidden items-center justify-center bg-secondary">
                                     <Image
                                         source={avatarSource}
-                                        className="w-full h-full"
+                                        style={{ width: "100%", height: "100%" }}
                                         resizeMode="cover"
                                     />
                                 </View>
-                                <Pressable
-                                    onPress={() => setIsAvatarOpen(true)}
-                                    className="absolute bottom-0 right-0 bg-background p-2 rounded-full border-2 border-border shadow-sm"
-                                    hitSlop={8}
+                                <View
+                                    className="absolute bottom-0 right-0 w-5 h-5 rounded-full items-center justify-center"
+                                    style={{
+                                        backgroundColor: C.primary,
+                                        borderWidth: 1.5,
+                                        borderColor: C.white,
+                                    }}
                                 >
-                                    <Pencil size={14} className="text-foreground" />
-                                </Pressable>
-                            </View>
-                        </View>
+                                    <Pencil size={9} color={C.white} />
+                                </View>
+                            </Pressable>
 
-                        {/* Form Content */}
-                        <View className="px-6">
-                            <View className="gap-y-6">
-                                {/* Full Name */}
-                                <View>
-                                    <SectionLabel>Full name</SectionLabel>
+                            {/* Name + Email */}
+                            <View className="flex-1 gap-y-1">
+                                {nameEditing ? (
                                     <TextInput
                                         value={fullName ?? ""}
                                         onChangeText={setFullName}
+                                        onBlur={() => setNameEditing(false)}
+                                        autoFocus
                                         placeholder="Your name"
-                                        placeholderTextColor="#9ca3af"
-                                        className="rounded-2xl border bg-white px-4 py-3.5 text-sm text-[#1A1A1A] font-medium shadow-sm"
-                                        style={{ borderColor: "#D6EDE6", shadowColor: "rgba(0,0,0,0.02)", shadowOffset: { width: 0, height: 2 } }}
-                                        returnKeyType="next"
+                                        placeholderTextColor={C.textMuted}
+                                        className="text-sm font-semibold py-1 px-2 rounded-lg"
+                                        style={{
+                                            color: C.textMain,
+                                            backgroundColor: C.surface,
+                                            borderWidth: 1,
+                                            borderColor: C.primary,
+                                        }}
+                                        returnKeyType="done"
                                     />
-                                </View>
-
-                                {/* Email */}
-                                <View>
-                                    <SectionLabel>Email</SectionLabel>
-                                    <View className="flex-row items-center gap-2 rounded-2xl border bg-[#f1f1f1] px-4 py-3.5" style={{ borderColor: "#D6EDE6" }}>
-                                        <Mail size={16} strokeWidth={2} className="text-[#555555]" />
-                                        <Text
-                                            className="flex-1 text-sm text-[#555555] font-medium"
-                                            numberOfLines={1}
-                                        >
-                                            {email}
-                                        </Text>
-                                        <View className="rounded-full bg-muted-foreground/15 px-2 py-0.5">
-                                            <Text className="text-xs text-muted-foreground">
-                                                verified
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </View>
-
-                                {/* Currency */}
-                                <View>
-                                    <SectionLabel>Primary currency</SectionLabel>
-                                    <View className="flex-row gap-2">
-                                        {CURRENCY_OPTIONS.map((c) => {
-                                            const isActive = preferredCurrency === c;
-                                            return (
-                                                <Pill
-                                                    key={c}
-                                                    active={isActive}
-                                                    onPress={() => setPreferredCurrency(c)}
-                                                >
-                                                    <Text
-                                                        className={`text-base font-bold ${isActive
-                                                            ? "text-primary-foreground"
-                                                            : "text-foreground"
-                                                            }`}
-                                                    >
-                                                        {CURRENCY_SYMBOLS[c]}
-                                                    </Text>
-                                                    <Text
-                                                        className={`text-xs ${isActive
-                                                            ? "text-primary-foreground/80"
-                                                            : "text-muted-foreground"
-                                                            }`}
-                                                    >
-                                                        {c}
-                                                    </Text>
-                                                </Pill>
-                                            );
-                                        })}
-                                    </View>
-                                </View>
-
-                                {/* Timezone */}
-                                <View>
-                                    <SectionLabel>Timezone</SectionLabel>
+                                ) : (
                                     <Pressable
-                                        onPress={() => setIsTimezoneOpen(true)}
-                                        className="flex-row items-center justify-between rounded-2xl border bg-white px-4 py-3.5 shadow-sm active:opacity-70"
-                                        style={{ borderColor: "#D6EDE6", shadowColor: "rgba(0,0,0,0.02)", shadowOffset: { width: 0, height: 2 } }}
+                                        onPress={() => setNameEditing(true)}
+                                        className="flex-row items-center gap-2 active:opacity-60"
                                     >
-                                        <View className="mr-2 flex-row flex-1 items-center gap-3">
-                                            <Clock
-                                                size={16}
-                                                strokeWidth={2}
-                                                className="text-[#1A1A1A]"
-                                            />
-                                            <Text
-                                                className="flex-1 text-sm text-foreground"
-                                                numberOfLines={1}
-                                            >
-                                                {selectedTimezoneLabel}
-                                            </Text>
-                                        </View>
-                                        <Text className="text-xs text-muted-foreground">▼</Text>
-                                    </Pressable>
-                                </View>
-
-                                {/* Language */}
-                                <View>
-                                    <SectionLabel>Language</SectionLabel>
-                                    <View className="gap-y-2">
-                                        {LOCALES.map((l) => {
-                                            const isActive = locale === l.code;
-                                            return (
-                                                <Pressable
-                                                    key={l.code}
-                                                    onPress={() => setLocale(l.code)}
-                                                    className={`flex-row items-center gap-4 rounded-2xl border px-5 py-4 ${isActive
-                                                        ? "border-[#1A1A1A] bg-[#1A1A1A]/5"
-                                                        : "border-[#D6EDE6] bg-white shadow-sm"
-                                                        }`}
-                                                    style={!isActive ? { shadowColor: "rgba(0,0,0,0.02)", shadowOffset: { width: 0, height: 2 } } : {}}
-                                                >
-                                                    <Text className="text-[20px]">{l.flag}</Text>
-                                                    <Text
-                                                        className={`flex-1 text-[13px] font-bold ${isActive ? "text-[#1A1A1A]" : "text-[#555555]"
-                                                            }`}
-                                                    >
-                                                        {l.label}
-                                                    </Text>
-                                                    {isActive && (
-                                                        <View className="h-5 w-5 items-center justify-center rounded-full bg-primary">
-                                                            <Check size={12} color="white" />
-                                                        </View>
-                                                    )}
-                                                </Pressable>
-                                            );
-                                        })}
-                                    </View>
-                                </View>
-
-                                {/* Error */}
-                                {formError && (
-                                    <View className="flex-row items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-                                        <Text className="flex-1 text-sm text-red-600">
-                                            {formError}
+                                        <Text className="text-sm font-semibold" style={{ color: C.textMain }}>
+                                            {fullName || "Add your name"}
                                         </Text>
-                                    </View>
+                                        <Pencil size={12} color={C.textMuted} />
+                                    </Pressable>
                                 )}
-
-                                {/* CTA */}
-                                <Pressable
-                                    disabled={loading}
-                                    onPress={handleSave}
-                                    className={`mt-2 items-center justify-center rounded-xl px-4 py-4 ${loading ? "bg-primary/60" : "bg-primary"
-                                        }`}
-                                >
-                                    <Text className="text-base font-semibold text-primary-foreground">
-                                        {loading ? "Saving..." : "Save Changes"}
+                                <View className="flex-row items-center gap-1.5">
+                                    <Mail size={12} color={C.textMuted} />
+                                    <Text className="text-xs" style={{ color: C.textMuted }} numberOfLines={1}>
+                                        {email}
                                     </Text>
-                                </Pressable>
+                                </View>
                             </View>
                         </View>
+
+                        {/* ── Preferences ── */}
+                        <GroupLabel>Preferences</GroupLabel>
+                        <Card>
+                            {/* Currency */}
+                            {/* <Text className="text-2xl px-4 pt-3.5" style={{ fontFamily: "Handjet_700Bold" }}>Preferences</Text> */}
+                            <View
+                                className="px-4 pt-3.5 pb-3"
+                                style={{ borderBottomWidth: 1, borderBottomColor: C.border }}
+                            >
+                                <Text className="text-xs mb-2.5 font-medium" style={{ color: C.textMuted }}>
+                                    Currency
+                                </Text>
+                                <View className="flex-row gap-2">
+                                    {CURRENCY_OPTIONS.map((c) => {
+                                        const isActive = preferredCurrency === c;
+                                        return (
+                                            <Pressable
+                                                key={c}
+                                                onPress={() => setPreferredCurrency(c)}
+                                                className="flex-row items-center gap-1.5 px-3 py-2 rounded-xl active:opacity-60"
+                                                style={{
+                                                    borderWidth: 1.5,
+                                                    borderColor: isActive ? C.primary : C.border,
+                                                    backgroundColor: isActive ? C.primaryBg : C.surface,
+                                                }}
+                                            >
+                                                <Text
+                                                    className="text-sm font-bold"
+                                                    style={{ color: isActive ? C.primary : C.textSecondary }}
+                                                >
+                                                    {CURRENCY_SYMBOLS[c]}
+                                                </Text>
+                                                <Text
+                                                    className="text-xs font-semibold"
+                                                    style={{ color: isActive ? C.primary : C.textMuted }}
+                                                >
+                                                    {c}
+                                                </Text>
+                                            </Pressable>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+
+                            {/* Timezone */}
+                            <SettingRow
+                                label="Timezone"
+                                value={timezone}
+                                onPress={() => setIsTimezoneOpen(true)}
+                                icon={<Clock size={15} color={C.textMuted} />}
+                            />
+
+                            {/* Language */}
+                            <SettingRow
+                                label="Language"
+                                value={selectedLocaleLabel ? `${selectedLocaleLabel.flag}  ${selectedLocaleLabel.label}` : ""}
+                                onPress={() => { }}
+                                icon={<Globe size={15} color={C.textMuted} />}
+                                last
+                            />
+                        </Card>
+
+                        {/* Language picker inline — muncul di bawah card saat di-tap */}
+                        <View className="mt-2 gap-y-1.5">
+                            {LOCALES.map((l) => {
+                                const isActive = locale === l.code;
+                                return (
+                                    <Pressable
+                                        key={l.code}
+                                        onPress={() => setLocale(l.code)}
+                                        className="flex-row items-center gap-3 px-4 py-3 rounded-xl active:opacity-60"
+                                        style={{
+                                            backgroundColor: isActive ? C.primaryBg : C.white,
+                                            borderWidth: 1,
+                                            borderColor: isActive ? C.primary : C.border,
+                                        }}
+                                    >
+                                        <Text className="text-base">{l.flag}</Text>
+                                        <Text
+                                            className="flex-1 text-sm font-medium"
+                                            style={{ color: isActive ? C.primary : C.textSecondary }}
+                                        >
+                                            {l.label}
+                                        </Text>
+                                        {isActive && <Check size={15} color={C.primary} />}
+                                    </Pressable>
+                                );
+                            })}
+                        </View>
+
+                        {/* ── Error ── */}
+                        {formError && (
+                            <View
+                                className="mt-4 rounded-xl px-4 py-3 border border-red-200"
+                                style={{ backgroundColor: "#FFF5F5" }}
+                            >
+                                <Text className="text-sm text-red-500">{formError}</Text>
+                            </View>
+                        )}
                     </ScrollView>
                 </KeyboardAvoidingView>
             </SafeAreaView>

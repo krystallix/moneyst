@@ -275,6 +275,80 @@ export function TimezonePickerModal(props: {
     );
 }
 
+// ─── Constants & UI Helpers ──────────────────────────────────────────────────
+
+const C = {
+    primary: "#5B8F85",
+    primaryBg: "rgba(91,143,133,0.12)",
+    border: "#EBEBEB",
+    textMain: "#1A1A1A",
+    textMuted: "#AAAAAA",
+    textSecondary: "#666666",
+    surface: "#F7F7F7",
+    white: "#ffffff",
+} as const;
+
+function GroupLabel({ children }: { children: string }) {
+    return (
+        <Text
+            className="text-xs font-semibold tracking-widest uppercase px-1 mb-2"
+            style={{ color: C.textMuted }}
+        >
+            {children}
+        </Text>
+    );
+}
+
+function SettingRow({
+    label,
+    value,
+    onPress,
+    icon,
+    last = false,
+}: {
+    label: string;
+    value?: string;
+    onPress?: () => void;
+    icon?: React.ReactNode;
+    last?: boolean;
+}) {
+    const Inner = (
+        <View
+            className="flex-row items-center px-4 py-3.5"
+            style={!last ? { borderBottomWidth: 1, borderBottomColor: C.border } : undefined}
+        >
+            {icon && <View className="mr-3">{icon}</View>}
+            <Text className="flex-1 text-sm font-medium" style={{ color: C.textMain }}>
+                {label}
+            </Text>
+            {value ? (
+                <Text className="text-sm mr-2" style={{ color: C.textMuted }} numberOfLines={1}>
+                    {value}
+                </Text>
+            ) : null}
+            {onPress && <Text className="text-xs" style={{ color: C.textMuted }}>▼</Text>}
+        </View>
+    );
+
+    if (!onPress) return Inner;
+    return (
+        <Pressable onPress={onPress} className="active:opacity-60">
+            {Inner}
+        </Pressable>
+    );
+}
+
+function Card({ children }: { children: React.ReactNode }) {
+    return (
+        <View
+            className="rounded-2xl overflow-hidden"
+            style={{ backgroundColor: C.white, borderWidth: 1, borderColor: C.border }}
+        >
+            {children}
+        </View>
+    );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function OnboardingProfileScreen() {
@@ -291,32 +365,26 @@ export default function OnboardingProfileScreen() {
 
     const timezoneOptions: TimezoneOption[] = useMemo(() => {
         const raw = (timezones as TimezoneItem[]).flatMap((tz) =>
-            tz.utc.map((u) => ({
-                id: u,
-                label: `${tz.text} - ${u}`,
-                offset: tz.offset,
-            })),
+            tz.utc.map((u) => ({ id: u, label: `${tz.text} - ${u}`, offset: tz.offset }))
         );
-
         const seen = new Set<string>();
-        const unique = raw.filter((item) => {
-            if (seen.has(item.id)) return false;
-            seen.add(item.id);
-            return true;
-        });
-
-        return unique.sort(
-            (a, b) => a.offset - b.offset || a.label.localeCompare(b.label),
-        );
+        return raw
+            .filter((item) => {
+                if (seen.has(item.id)) return false;
+                seen.add(item.id);
+                return true;
+            })
+            .sort((a, b) => a.offset - b.offset || a.label.localeCompare(b.label));
     }, []);
 
     const selectedTimezoneLabel = useMemo(() => {
         const found = timezoneOptions.find((t) => t.id === timezone);
         if (!found) return timezone;
-        const offset =
-            found.offset >= 0 ? `+${found.offset}` : `${found.offset}`;
-        return `${timezone}  ·  UTC${offset}`;
+        const sign = found.offset >= 0 ? "+" : "";
+        return `${timezone}  (UTC${sign}${found.offset})`;
     }, [timezoneOptions, timezone]);
+
+    const selectedLocaleLabel = LOCALES.find((l) => l.code === locale);
 
     // Redirect jika tidak ada session; populasi form dari user metadata
     useEffect(() => {
@@ -372,7 +440,7 @@ export default function OnboardingProfileScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-background">
+        <SafeAreaView className="flex-1" style={{ backgroundColor: C.surface }}>
             <StatusBar style="dark" />
 
             <KeyboardAvoidingView
@@ -380,138 +448,142 @@ export default function OnboardingProfileScreen() {
                 behavior={Platform.OS === "android" ? "padding" : undefined}
             >
                 <ScrollView
-                    contentContainerStyle={{ padding: 24, paddingBottom: 40 }}
+                    contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
                     {/* Header */}
-                    <View className="mt-2 mb-8">
-                        <Text className="text-2xl font-bold tracking-tight text-foreground">
+                    <View className="mt-2 mb-8 px-2">
+                        <Text className="text-3xl font-bold tracking-tight" style={{ color: C.textMain }}>
                             Complete your profile
                         </Text>
-                        <Text className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                        <Text className="mt-1.5 text-sm leading-relaxed" style={{ color: C.textSecondary }}>
                             Personalize your experience with a few quick settings.
                         </Text>
                     </View>
 
                     <View className="gap-y-6">
-                        {/* Full Name */}
+                        {/* ── Identity ── */}
                         <View>
-                            <SectionLabel>Full name</SectionLabel>
-                            <TextInput
-                                value={fullName}
-                                onChangeText={setFullName}
-                                placeholder="Your name"
-                                placeholderTextColor="#9ca3af"
-                                className="rounded-xl border border-border bg-background px-4 py-3.5 text-sm text-foreground"
-                                returnKeyType="next"
-                            />
-                        </View>
-
-                        {/* Email */}
-                        <View>
-                            <SectionLabel>Email</SectionLabel>
-                            <View className="flex-row items-center gap-2 rounded-xl border border-border bg-muted px-4 py-3.5">
-                                <Mail size={14} strokeWidth={2} className="text-foreground" />
-                                <Text
-                                    className="flex-1 text-sm text-muted-foreground"
-                                    numberOfLines={1}
+                            <GroupLabel>Identity</GroupLabel>
+                            <Card>
+                                {/* Full Name */}
+                                <View
+                                    className="px-4 py-1"
+                                    style={{ borderBottomWidth: 1, borderBottomColor: C.border }}
                                 >
-                                    {email}
-                                </Text>
-                                <View className="rounded-full bg-muted-foreground/15 px-2 py-0.5">
-                                    <Text className="text-xs text-muted-foreground">
-                                        verified
+                                    <Text className="text-xs mt-2 font-medium" style={{ color: C.textMuted }}>
+                                        Full name
                                     </Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        {/* Currency */}
-                        <View>
-                            <SectionLabel>Primary currency</SectionLabel>
-                            <View className="flex-row gap-2">
-                                {CURRENCY_OPTIONS.map((c) => {
-                                    const isActive = preferredCurrency === c;
-                                    return (
-                                        <Pill
-                                            key={c}
-                                            active={isActive}
-                                            onPress={() => setPreferredCurrency(c)}
-                                        >
-                                            <Text
-                                                className={`text-base font-bold ${isActive
-                                                    ? "text-primary-foreground"
-                                                    : "text-foreground"
-                                                    }`}
-                                            >
-                                                {CURRENCY_SYMBOLS[c]}
-                                            </Text>
-                                            <Text
-                                                className={`text-xs ${isActive
-                                                    ? "text-primary-foreground/80"
-                                                    : "text-muted-foreground"
-                                                    }`}
-                                            >
-                                                {c}
-                                            </Text>
-                                        </Pill>
-                                    );
-                                })}
-                            </View>
-                        </View>
-
-                        {/* Timezone */}
-                        <View>
-                            <SectionLabel>Timezone</SectionLabel>
-                            <Pressable
-                                onPress={() => setIsTimezoneOpen(true)}
-                                className="flex-row items-center justify-between rounded-xl border border-border bg-background px-4 py-3.5 active:bg-muted"
-                            >
-                                <View className="mr-2 flex-row flex-1 items-center gap-2">
-                                    <Clock
-                                        size={14}
-                                        strokeWidth={2}
-                                        className="text-foreground"
+                                    <TextInput
+                                        value={fullName}
+                                        onChangeText={setFullName}
+                                        placeholder="Your name"
+                                        placeholderTextColor={C.textMuted}
+                                        className="py-2 text-sm font-semibold"
+                                        style={{ color: C.textMain }}
+                                        returnKeyType="next"
                                     />
+                                </View>
+
+                                {/* Email */}
+                                <View className="flex-row items-center px-4 py-3 bg-muted">
+                                    <Mail size={14} strokeWidth={2} color={C.textMuted} />
                                     <Text
-                                        className="flex-1 text-sm text-foreground"
+                                        className="flex-1 ml-2 text-sm font-medium"
+                                        style={{ color: C.textMuted }}
                                         numberOfLines={1}
                                     >
-                                        {selectedTimezoneLabel}
+                                        {email}
                                     </Text>
+                                    <View className="rounded-full px-2 py-0.5" style={{ backgroundColor: C.surface }}>
+                                        <Text className="text-xs" style={{ color: C.textMuted }}>
+                                            verified
+                                        </Text>
+                                    </View>
                                 </View>
-                                <Text className="text-xs text-muted-foreground">▼</Text>
-                            </Pressable>
+                            </Card>
                         </View>
 
-                        {/* Language */}
+                        {/* ── Preferences ── */}
                         <View>
-                            <SectionLabel>Language</SectionLabel>
-                            <View className="gap-y-2">
+                            <GroupLabel>Preferences</GroupLabel>
+                            <Card>
+                                {/* Currency */}
+                                <View
+                                    className="px-4 pt-3.5 pb-3"
+                                    style={{ borderBottomWidth: 1, borderBottomColor: C.border }}
+                                >
+                                    <Text className="text-xs mb-2.5 font-medium" style={{ color: C.textMuted }}>
+                                        Currency
+                                    </Text>
+                                    <View className="flex-row gap-2">
+                                        {CURRENCY_OPTIONS.map((c) => {
+                                            const isActive = preferredCurrency === c;
+                                            return (
+                                                <Pressable
+                                                    key={c}
+                                                    onPress={() => setPreferredCurrency(c)}
+                                                    className="flex-row items-center gap-1.5 px-3 py-2 rounded-xl active:opacity-60"
+                                                    style={{
+                                                        borderWidth: 1.5,
+                                                        borderColor: isActive ? C.primary : C.border,
+                                                        backgroundColor: isActive ? C.primaryBg : C.surface,
+                                                    }}
+                                                >
+                                                    <Text
+                                                        className="text-sm font-bold"
+                                                        style={{ color: isActive ? C.primary : C.textSecondary }}
+                                                    >
+                                                        {CURRENCY_SYMBOLS[c]}
+                                                    </Text>
+                                                    <Text
+                                                        className="text-xs font-semibold"
+                                                        style={{ color: isActive ? C.primary : C.textMuted }}
+                                                    >
+                                                        {c}
+                                                    </Text>
+                                                </Pressable>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+
+                                {/* Timezone */}
+                                <SettingRow
+                                    label="Timezone"
+                                    value={selectedTimezoneLabel}
+                                    onPress={() => setIsTimezoneOpen(true)}
+                                    icon={<Clock size={15} color={C.textMuted} />}
+                                />
+                            </Card>
+                        </View>
+
+                        {/* Language picker inline */}
+                        <View>
+                            <GroupLabel>Language</GroupLabel>
+                            <View className="gap-y-1.5">
                                 {LOCALES.map((l) => {
                                     const isActive = locale === l.code;
                                     return (
                                         <Pressable
                                             key={l.code}
                                             onPress={() => setLocale(l.code)}
-                                            className={`flex-row items-center gap-3 rounded-xl border px-4 py-3.5 ${isActive
-                                                ? "border-primary bg-primary/8"
-                                                : "border-border bg-background"
-                                                }`}
+                                            className="flex-row items-center gap-3 px-4 py-3 rounded-xl active:opacity-60"
+                                            style={{
+                                                backgroundColor: isActive ? C.primaryBg : C.white,
+                                                borderWidth: 1,
+                                                borderColor: isActive ? C.primary : C.border,
+                                            }}
                                         >
-                                            <Text className="text-xl">{l.flag}</Text>
+                                            <Text className="text-base">{l.flag}</Text>
                                             <Text
-                                                className={`flex-1 text-sm font-medium ${isActive ? "text-primary" : "text-foreground"
-                                                    }`}
+                                                className="flex-1 text-sm font-medium"
+                                                style={{ color: isActive ? C.primary : C.textSecondary }}
                                             >
                                                 {l.label}
                                             </Text>
-                                            {isActive && (
-                                                <View className="h-5 w-5 items-center justify-center rounded-full bg-primary">
-                                                    <Check size={12} color="white" />
-                                                </View>
-                                            )}
+                                            {isActive && <Check size={15} color={C.primary} />}
                                         </Pressable>
                                     );
                                 })}
@@ -520,10 +592,11 @@ export default function OnboardingProfileScreen() {
 
                         {/* Error */}
                         {formError && (
-                            <View className="flex-row items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-                                <Text className="flex-1 text-sm text-red-600">
-                                    {formError}
-                                </Text>
+                            <View
+                                className="mt-2 rounded-xl px-4 py-3 border border-red-200"
+                                style={{ backgroundColor: "#FFF5F5" }}
+                            >
+                                <Text className="text-sm text-red-500">{formError}</Text>
                             </View>
                         )}
 
@@ -531,10 +604,13 @@ export default function OnboardingProfileScreen() {
                         <Pressable
                             disabled={loading}
                             onPress={handleContinue}
-                            className={`mt-2 items-center justify-center rounded-xl px-4 py-4 ${loading ? "bg-primary/60" : "bg-primary"
-                                }`}
+                            className={`mt-4 items-center justify-center rounded-xl px-4 py-4 ${loading ? "bg-muted" : ""}`}
+                            style={!loading ? { backgroundColor: C.primary } : {}}
                         >
-                            <Text className="text-base font-semibold text-primary-foreground">
+                            <Text
+                                className="text-base font-semibold"
+                                style={{ color: loading ? C.textMuted : C.white }}
+                            >
                                 {loading ? "Saving..." : "Continue →"}
                             </Text>
                         </Pressable>

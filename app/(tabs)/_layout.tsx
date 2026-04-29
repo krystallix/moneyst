@@ -1,10 +1,9 @@
 import Home from "@/assets/icons/home.svg";
 import Notebook from "@/assets/icons/notebook.svg";
 import NumberedList from "@/assets/icons/numbered-list.svg";
-import Plus from "@/assets/icons/plus.svg";
-import Setting from "@/assets/icons/setting.svg";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { router, Tabs } from "expo-router";
+import { ScanBarcode, Target } from "lucide-react-native";
 import { useEffect } from "react";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated";
@@ -15,9 +14,9 @@ function getIconForRoute(routeName: string, focused: boolean, color: string) {
     switch (routeName) {
         case "home": return <Home width={22} height={22} color={color} strokeWidth={stroke} />;
         case "transactions": return <NumberedList width={22} height={22} color={color} strokeWidth={stroke} />;
-        case "new": return <Plus width={22} height={22} color={color} strokeWidth={stroke} />;
+        case "new": return <ScanBarcode width={22} height={22} color={color} strokeWidth={stroke} />;
         case "reports": return <Notebook width={22} height={22} color={color} strokeWidth={stroke} />;
-        case "settings": return <Setting width={22} height={22} color={color} strokeWidth={stroke} />;
+        case "budget": return <Target size={22} color={color} strokeWidth={stroke} />;
         default: return null;
     }
 }
@@ -28,7 +27,7 @@ function getLabelForRoute(routeName: string) {
         case "transactions": return "Transactions";
         case "new": return "Add";
         case "reports": return "Reports";
-        case "settings": return "Settings";
+        case "budget": return "Budget";
         default: return routeName;
     }
 }
@@ -195,7 +194,7 @@ export default function AppTabsLayout() {
             <Tabs.Screen name="transactions" />
             <Tabs.Screen name="new" />
             <Tabs.Screen name="reports" />
-            <Tabs.Screen name="settings" />
+            <Tabs.Screen name="budget" />
         </Tabs>
     );
 }
