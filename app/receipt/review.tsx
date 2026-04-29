@@ -1,3 +1,4 @@
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { analyzeReceiptLocally, insertTransactionSplits, resolveOrCreateMerchant, uploadReceiptImage } from "@/lib/receipt/scan";
 import { getAccounts, updateAccount } from "@/lib/supabase/accounts";
@@ -23,7 +24,6 @@ import {
 import { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     Animated,
     Easing,
     Image,
@@ -99,6 +99,7 @@ export default function ReceiptReviewScreen() {
     const [scanStep, setScanStep] = useState<"uploading" | "analyzing" | null>("uploading");
     const [scanError, setScanError] = useState<string | null>(null);
     const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+    const [alertMsg, setAlertMsg] = useState<{ title: string, description: string, onSuccess?: () => void } | null>(null);
 
     // Extracted fields (editable)
     const [merchantName, setMerchantName] = useState("");
@@ -132,7 +133,7 @@ export default function ReceiptReviewScreen() {
                 // 1. First fetch categories and accounts
                 setScanStep("analyzing"); // Starting with analysis now
                 const [accs, cats] = await Promise.all([getAccounts(user.id), getCategories(user.id)]);
-                
+
                 setAccounts(accs ?? []);
                 const expenseCats = (cats ?? []).filter((c: any) => c.type === "expense");
                 setAllCategories(expenseCats);
@@ -202,15 +203,15 @@ export default function ReceiptReviewScreen() {
     const handleSave = async () => {
         if (!user || !accountId || !totalNum) return;
         if (!splitMode && !singleCategoryId) {
-            Alert.alert("Missing Category", "Please select a category for this transaction.");
+            setAlertMsg({ title: "Missing Category", description: "Please select a category for this transaction." });
             return;
         }
         if (splitMode && splits.length === 0) {
-            Alert.alert("No Splits", "Add at least one split, or switch to single category mode.");
+            setAlertMsg({ title: "No Splits", description: "Add at least one split, or switch to single category mode." });
             return;
         }
         if (splitMode && !splitsMatch) {
-            Alert.alert("Split Mismatch", `Split total (Rp ${fmtIDR(splitsTotal)}) must equal transaction amount (Rp ${fmtIDR(totalNum)}).`);
+            setAlertMsg({ title: "Split Mismatch", description: `Split total (Rp ${fmtIDR(splitsTotal)}) must equal transaction amount (Rp ${fmtIDR(totalNum)}).` });
             return;
         }
 
@@ -264,15 +265,15 @@ export default function ReceiptReviewScreen() {
             }
 
             setScanStep(null);
-            Alert.alert(
-                "✓ Transaction Saved",
-                `Rp ${fmtIDR(totalNum)} from ${merchantName || "receipt"}\nID: ${tx.id.slice(0, 8)}...`,
-                [{ text: "OK", onPress: () => router.replace("/(tabs)/home") }]
-            );
+            setAlertMsg({
+                title: "✓ Transaction Saved",
+                description: `Rp ${fmtIDR(totalNum)} from ${merchantName || "receipt"}\nID: ${tx.id.slice(0, 8)}...`,
+                onSuccess: () => router.replace("/(tabs)/home")
+            });
         } catch (err: any) {
             console.error("Save error:", err);
             setScanStep(null);
-            Alert.alert("Save Failed", err?.message ?? "Something went wrong. Please try again.");
+            setAlertMsg({ title: "Save Failed", description: err?.message ?? "Something went wrong. Please try again." });
         } finally {
             setIsSaving(false);
         }
@@ -598,6 +599,18 @@ export default function ReceiptReviewScreen() {
                     </ScrollView>
                 </KeyboardAvoidingView>
             </SafeAreaView>
+            <ConfirmModal
+                visible={!!alertMsg}
+                title={alertMsg?.title ?? ""}
+                description={alertMsg?.description ?? ""}
+                confirmText="OK"
+                singleButton={true}
+                onConfirm={() => {
+                    const cb = alertMsg?.onSuccess;
+                    setAlertMsg(null);
+                    if (cb) cb();
+                }}
+            />
         </View>
     );
 }

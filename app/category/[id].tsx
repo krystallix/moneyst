@@ -49,7 +49,6 @@ import {
 import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     Pressable,
     ScrollView,
     Text,
@@ -116,6 +115,8 @@ function hexToRgba(hex: string, alpha = 0.12) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
+import { ConfirmModal } from "@/components/ConfirmModal";
+
 export default function EditCategoryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
@@ -128,6 +129,7 @@ export default function EditCategoryScreen() {
   const [isSystem, setIsSystem] = useState(false);
   const [loadingInit, setLoadingInit] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [alertMsg, setAlertMsg] = useState<{ title: string, description: string, onConfirm?: () => void } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -139,14 +141,14 @@ export default function EditCategoryScreen() {
         setSelectedType(cat.type);
         setIsSystem(cat.is_system);
       })
-      .catch(() => Alert.alert("Error", "Could not load category."))
+      .catch(() => setAlertMsg({ title: "Error", description: "Could not load category.", onConfirm: () => router.back() }))
       .finally(() => setLoadingInit(false));
   }, [id]);
 
   const handleSave = async () => {
     if (!user || !id) return;
     if (!name.trim()) {
-      Alert.alert("Validation", "Category name is required.");
+      setAlertMsg({ title: "Validation", description: "Category name is required." });
       return;
     }
 
@@ -160,7 +162,7 @@ export default function EditCategoryScreen() {
       });
       router.back();
     } catch (e: any) {
-      Alert.alert("Error", e?.message ?? "Could not update category.");
+      setAlertMsg({ title: "Error", description: e?.message ?? "Could not update category." });
     } finally {
       setSaving(false);
     }
@@ -351,6 +353,19 @@ export default function EditCategoryScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      <ConfirmModal
+          visible={!!alertMsg}
+          title={alertMsg?.title ?? ""}
+          description={alertMsg?.description ?? ""}
+          confirmText="OK"
+          singleButton={true}
+          onConfirm={() => {
+              const cb = alertMsg?.onConfirm;
+              setAlertMsg(null);
+              if (cb) cb();
+          }}
+      />
     </>
   );
 }

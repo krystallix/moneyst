@@ -8,7 +8,6 @@ import { Check, ChevronLeft, Trash2 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     Pressable,
     ScrollView,
     Switch,
@@ -59,6 +58,7 @@ export default function EditAccountScreen() {
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+    const [alertMsg, setAlertMsg] = useState<{ title: string, description: string, onConfirm?: () => void } | null>(null);
 
     useEffect(() => {
         if (!id) return;
@@ -74,14 +74,14 @@ export default function EditAccountScreen() {
                 setCurrency(acc.currency ?? "IDR");
                 setIncludeInNetWorth(acc.include_in_net_worth);
             })
-            .catch(() => Alert.alert("Error", "Could not load account."))
+            .catch(() => setAlertMsg({ title: "Error", description: "Could not load account.", onConfirm: () => router.back() }))
             .finally(() => setLoadingInit(false));
     }, [id]);
 
     const handleSave = async () => {
         if (!user || !id) return;
         if (!name.trim()) {
-            Alert.alert("Validation", "Account name is required.");
+            setAlertMsg({ title: "Validation", description: "Account name is required." });
             return;
         }
 
@@ -103,7 +103,7 @@ export default function EditAccountScreen() {
 
             router.back();
         } catch (e: any) {
-            Alert.alert("Error", e?.message ?? "Could not update account.");
+            setAlertMsg({ title: "Error", description: e?.message ?? "Could not update account." });
         } finally {
             setSaving(false);
         }
@@ -120,7 +120,7 @@ export default function EditAccountScreen() {
             await updateAccount(id, { is_active: false });
             router.back();
         } catch (e: any) {
-            Alert.alert("Error", e?.message ?? "Could not delete account.");
+            setAlertMsg({ title: "Error", description: e?.message ?? "Could not delete account." });
             setDeleting(false);
         }
     };
@@ -388,6 +388,19 @@ export default function EditAccountScreen() {
                 loading={deleting}
                 onCancel={() => setShowConfirmDelete(false)}
                 onConfirm={handleDeleteConfirm}
+            />
+
+            <ConfirmModal
+                visible={!!alertMsg}
+                title={alertMsg?.title ?? ""}
+                description={alertMsg?.description ?? ""}
+                confirmText="OK"
+                singleButton={true}
+                onConfirm={() => {
+                    const cb = alertMsg?.onConfirm;
+                    setAlertMsg(null);
+                    if (cb) cb();
+                }}
             />
         </>
     );

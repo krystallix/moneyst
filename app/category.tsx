@@ -169,6 +169,8 @@ export default function CategoryScreen() {
         setConfirmDeleteCat(cat);
     };
 
+    const [errorMsg, setErrorMsg] = useState<{ title: string, description: string } | null>(null);
+
     const handleDeleteConfirm = async () => {
         if (!confirmDeleteCat) return;
         setIsDeleting(true);
@@ -177,7 +179,8 @@ export default function CategoryScreen() {
             setCategories(prev => prev.filter(c => c.id !== confirmDeleteCat.id));
             setConfirmDeleteCat(null);
         } catch {
-            Alert.alert("Error", "Could not delete category.");
+            setErrorMsg({ title: "Error", description: "Could not delete category." });
+            setConfirmDeleteCat(null);
         } finally {
             setIsDeleting(false);
         }
@@ -276,6 +279,16 @@ export default function CategoryScreen() {
                 loading={isDeleting}
                 onCancel={() => setConfirmDeleteCat(null)}
                 onConfirm={handleDeleteConfirm}
+            />
+
+            <ConfirmModal
+                visible={!!errorMsg}
+                title={errorMsg?.title ?? "Error"}
+                description={errorMsg?.description ?? ""}
+                confirmText="OK"
+                isDestructive={true}
+                singleButton={true}
+                onConfirm={() => setErrorMsg(null)}
             />
         </View>
     );

@@ -8,10 +8,11 @@ export type ConfirmModalProps = {
     description: string;
     cancelText?: string;
     confirmText?: string;
-    onCancel: () => void;
+    onCancel?: () => void;
     onConfirm: () => void;
     isDestructive?: boolean;
     loading?: boolean;
+    singleButton?: boolean;
 };
 
 export function ConfirmModal({
@@ -24,6 +25,7 @@ export function ConfirmModal({
     onConfirm,
     isDestructive = false,
     loading = false,
+    singleButton = false,
 }: ConfirmModalProps) {
     const [show, setShow] = useState(visible);
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -68,7 +70,7 @@ export function ConfirmModal({
     return (
         <Modal transparent visible={show} animationType="none" statusBarTranslucent>
             <Animated.View style={[{ opacity: fadeAnim }, StyleSheet.absoluteFill]} className="bg-black/40 items-center justify-center px-6">
-                <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} disabled={loading} />
+                <Pressable style={StyleSheet.absoluteFill} onPress={onCancel || onConfirm} disabled={loading} />
                 
                 <Animated.View 
                     style={{ transform: [{ scale: scaleAnim }] }}
@@ -88,15 +90,17 @@ export function ConfirmModal({
                     </View>
 
                     <View className="flex-row border-t border-[#f1f1f1]">
-                        <Pressable 
-                            onPress={onCancel} 
-                            disabled={loading}
-                            className="flex-1 py-4 items-center justify-center border-r border-[#f1f1f1] active:bg-[#f9f9f9]"
-                        >
-                            <Text className="text-[15px] font-semibold text-[#555555]">
-                                {cancelText}
-                            </Text>
-                        </Pressable>
+                        {!singleButton && (
+                            <Pressable 
+                                onPress={onCancel} 
+                                disabled={loading}
+                                className="flex-1 py-4 items-center justify-center border-r border-[#f1f1f1] active:bg-[#f9f9f9]"
+                            >
+                                <Text className="text-[15px] font-semibold text-[#555555]">
+                                    {cancelText}
+                                </Text>
+                            </Pressable>
+                        )}
                         <Pressable 
                             onPress={onConfirm}
                             disabled={loading}

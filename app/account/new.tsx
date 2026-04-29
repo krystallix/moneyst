@@ -8,7 +8,6 @@ import { Check, ChevronLeft } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     Pressable,
     ScrollView,
     Switch,
@@ -40,6 +39,8 @@ const ACCOUNT_COLORS = [
     "#ec4899", // Pink
 ];
 
+import { ConfirmModal } from "@/components/ConfirmModal";
+
 export default function NewAccountScreen() {
     const { user } = useAuth();
     const insets = useSafeAreaInsets();
@@ -55,6 +56,7 @@ export default function NewAccountScreen() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [profile, setProfile] = useState<any>(null);
+    const [alertMsg, setAlertMsg] = useState<{ title: string, description: string } | null>(null);
 
     useEffect(() => {
         if (!user) return;
@@ -67,7 +69,7 @@ export default function NewAccountScreen() {
     const handleSave = async () => {
         if (!user) return;
         if (!name.trim()) {
-            Alert.alert("Validation", "Account name is required.");
+            setAlertMsg({ title: "Validation", description: "Account name is required." });
             return;
         }
 
@@ -91,7 +93,7 @@ export default function NewAccountScreen() {
 
             router.back();
         } catch (e: any) {
-            Alert.alert("Error", e?.message ?? "Could not create account.");
+            setAlertMsg({ title: "Error", description: e?.message ?? "Could not create account." });
         } finally {
             setSaving(false);
         }
@@ -336,6 +338,14 @@ export default function NewAccountScreen() {
                     </View>
                 </ScrollView>
             </SafeAreaView>
+            <ConfirmModal
+                visible={!!alertMsg}
+                title={alertMsg?.title ?? ""}
+                description={alertMsg?.description ?? ""}
+                confirmText="OK"
+                singleButton={true}
+                onConfirm={() => setAlertMsg(null)}
+            />
         </>
     );
 }

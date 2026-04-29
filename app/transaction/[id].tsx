@@ -13,7 +13,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
     ActivityIndicator,
-    Alert,
     Animated,
     Dimensions,
     Modal,
@@ -83,6 +82,7 @@ export default function EditScreen() {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+    const [alertMsg, setAlertMsg] = useState<{ title: string, description: string } | null>(null);
 
     const handleDeleteConfirm = async () => {
         try {
@@ -91,7 +91,7 @@ export default function EditScreen() {
             await deleteTransaction(params.id as string);
             router.back();
         } catch (e: any) {
-            Alert.alert("Error", e?.message ?? "Could not delete transaction.");
+            setAlertMsg({ title: "Error", description: e?.message ?? "Could not delete transaction." });
             setDeleting(false);
         }
     };
@@ -602,6 +602,15 @@ export default function EditScreen() {
                 loading={deleting}
                 onCancel={() => setShowConfirmDelete(false)}
                 onConfirm={handleDeleteConfirm}
+            />
+
+            <ConfirmModal
+                visible={!!alertMsg}
+                title={alertMsg?.title ?? ""}
+                description={alertMsg?.description ?? ""}
+                confirmText="OK"
+                singleButton={true}
+                onConfirm={() => setAlertMsg(null)}
             />
         </View>
     );

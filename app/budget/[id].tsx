@@ -8,7 +8,6 @@ import { Check, ChevronLeft, HelpCircle, Plus, Trash2 } from "lucide-react-nativ
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView, Platform,
     Pressable,
     ScrollView,
@@ -16,6 +15,8 @@ import {
     View
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { ConfirmModal, ConfirmModalProps } from "@/components/ConfirmModal";
 
 function getSafeIcon(iconName: string | undefined | null) {
     if (!iconName) return HelpCircle;
@@ -31,6 +32,9 @@ export default function EditBudgetScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    
+    type ModalState = Omit<ConfirmModalProps, 'visible'>;
+    const [modalState, setModalState] = useState<ModalState | null>(null);
 
     const [name, setName] = useState("");
     const [amount, setAmount] = useState("");
@@ -100,8 +104,12 @@ export default function EditBudgetScreen() {
                 }
             } catch (error) {
                 console.error("Error loading budget:", error);
-                Alert.alert("Error", "Could not load budget data");
-                router.back();
+                setModalState({
+                    title: "Error",
+                    description: "Could not load budget data",
+                    singleButton: true,
+                    onConfirm: () => { setModalState(null); router.back(); }
+                });
             } finally {
                 setIsLoading(false);
             }
@@ -112,13 +120,23 @@ export default function EditBudgetScreen() {
     const handleSave = async () => {
         if (!user || !name || !amount || !id) return;
         if (selectedCategories.length === 0) {
-            Alert.alert("Missing Categories", "Please select at least one category for this budget.");
+            setModalState({
+                title: "Missing Categories",
+                description: "Please select at least one category for this budget.",
+                singleButton: true,
+                onConfirm: () => setModalState(null)
+            });
             return;
         }
 
         const numAmount = parseFloat(amount.replace(/[^0-9]/g, ''));
         if (isNaN(numAmount) || numAmount <= 0) {
-            Alert.alert("Invalid Amount", "Please enter a valid budget amount.");
+            setModalState({
+                title: "Invalid Amount",
+                description: "Please enter a valid budget amount.",
+                singleButton: true,
+                onConfirm: () => setModalState(null)
+            });
             return;
         }
 
@@ -135,14 +153,17 @@ export default function EditBudgetScreen() {
 
         const totalCatLimits = resolvedCats.reduce((sum, c) => sum + c.resolvedLimit, 0);
         if (totalCatLimits > numAmount) {
-            Alert.alert(
-                "Limits Exceed Budget",
-                `The sum of category limits (Rp ${totalCatLimits.toLocaleString('id-ID')}) exceeds the total budget (Rp ${numAmount.toLocaleString('id-ID')}). Continue?`,
-                [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Continue", onPress: () => doSave(numAmount, resolvedCats) }
-                ]
-            );
+            setModalState({
+                title: "Limits Exceed Budget",
+                description: `The sum of category limits (Rp ${totalCatLimits.toLocaleString('id-ID')}) exceeds the total budget (Rp ${numAmount.toLocaleString('id-ID')}). Continue?`,
+                cancelText: "Cancel",
+                confirmText: "Continue",
+                onCancel: () => setModalState(null),
+                onConfirm: () => {
+                    setModalState(null);
+                    doSave(numAmount, resolvedCats);
+                }
+            });
             return;
         }
 
@@ -168,36 +189,44 @@ export default function EditBudgetScreen() {
             router.back();
         } catch (e) {
             console.error("Update budget error:", e);
-            Alert.alert("Error", "Failed to update budget");
+            setModalState({
+                title: "Error",
+                description: "Failed to update budget",
+                singleButton: true,
+                onConfirm: () => setModalState(null)
+            });
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleDelete = () => {
-        Alert.alert(
-            "Delete Budget",
-            "Are you sure you want to delete this budget? This action cannot be undone.",
-            [
-                { text: "Cancel", style: "cancel" },
-                { 
-                    text: "Delete", 
-                    style: "destructive", 
-                    onPress: async () => {
-                        setIsDeleting(true);
-                        try {
-                            await deleteBudget(id as string);
-                            router.back();
-                        } catch (e) {
-                            console.error("Delete error:", e);
-                            Alert.alert("Error", "Failed to delete budget");
-                        } finally {
-                            setIsDeleting(false);
-                        }
-                    } 
+            setModalState({
+                title: "Delete Budget",
+                description: "Are you sure you want to delete this budget? This action cannot be undone.",
+                cancelText: "Cancel",
+                confirmText: "Delete",
+                isDestructive: true,
+                onCancel: () => setModalState(null),
+                onConfirm: async () => {
+                    setModalState(null);
+                    setIsDeleting(true);
+                    try {
+                        await deleteBudget(id as string);
+                        router.back();
+                    } catch (e) {
+                        console.error("Delete error:", e);
+                        setModalState({
+                            title: "Error",
+                            description: "Failed to delete budget",
+                            singleButton: true,
+                            onConfirm: () => setModalState(null)
+                        });
+                    } finally {
+                        setIsDeleting(false);
+                    }
                 }
-            ]
-        );
+            });
     };
 
     const addCategory = (cat: any) => {
@@ -438,6 +467,13 @@ export default function EditBudgetScreen() {
                 </KeyboardAvoidingView>
 
             </SafeAreaView>
+            
+            {modalState && (
+                <ConfirmModal
+                    visible={!!modalState}
+                    {...modalState}
+                />
+            )}
         </View>
     );
 }

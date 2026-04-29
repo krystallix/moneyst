@@ -41,6 +41,7 @@ import {
   Pill,
   Pizza,
   Plus,
+  ReceiptText,
   ShoppingBag,
   ShoppingCart,
   Star,
@@ -230,7 +231,7 @@ export function ActivityItem({
     : isIncome
       ? ArrowDownLeft
       : hasSplits
-        ? Tag
+        ? ReceiptText
         : getCategoryIcon(cat?.icon);
 
   const label =

@@ -108,6 +108,17 @@ export const getTransactionsByDate = async (userId: string, targetDate: string) 
             accounts:account_id (
                 id,
                 name
+            ),
+            splits:transaction_splits (
+                id,
+                amount,
+                description,
+                categories:category_id (
+                    id,
+                    name,
+                    icon,
+                    color
+                )
             )
         `)
         .eq('user_id', userId)

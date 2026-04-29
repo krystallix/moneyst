@@ -8,7 +8,6 @@ import { Check, ChevronLeft, HelpCircle, Plus, Trash2 } from "lucide-react-nativ
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView, Platform,
     Pressable,
     ScrollView,
@@ -16,6 +15,8 @@ import {
     View
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { ConfirmModal, ConfirmModalProps } from "@/components/ConfirmModal";
 
 function getSafeIcon(iconName: string | undefined | null) {
     if (!iconName) return HelpCircle;
@@ -43,6 +44,9 @@ export default function NewBudgetScreen() {
 
     const [isSaving, setIsSaving] = useState(false);
     const [showCategorySelector, setShowCategorySelector] = useState(false);
+    
+    type ModalState = Omit<ConfirmModalProps, 'visible'>;
+    const [modalState, setModalState] = useState<ModalState | null>(null);
 
     // Parsed total budget amount (0 if not set yet)
     const parsedAmount = (() => {
@@ -74,13 +78,23 @@ export default function NewBudgetScreen() {
     const handleSave = async () => {
         if (!user || !name || !amount) return;
         if (selectedCategories.length === 0) {
-            Alert.alert("Missing Categories", "Please select at least one category for this budget.");
+            setModalState({
+                title: "Missing Categories",
+                description: "Please select at least one category for this budget.",
+                singleButton: true,
+                onConfirm: () => setModalState(null)
+            });
             return;
         }
 
         const numAmount = parseFloat(amount.replace(/[^0-9]/g, ''));
         if (isNaN(numAmount) || numAmount <= 0) {
-            Alert.alert("Invalid Amount", "Please enter a valid budget amount.");
+            setModalState({
+                title: "Invalid Amount",
+                description: "Please enter a valid budget amount.",
+                singleButton: true,
+                onConfirm: () => setModalState(null)
+            });
             return;
         }
 
@@ -99,14 +113,17 @@ export default function NewBudgetScreen() {
         // Warn if any manual limit exceeds total (soft warning, still allow save)
         const totalCatLimits = resolvedCats.reduce((sum, c) => sum + c.resolvedLimit, 0);
         if (totalCatLimits > numAmount) {
-            Alert.alert(
-                "Limits Exceed Budget",
-                `The sum of category limits (Rp ${totalCatLimits.toLocaleString('id-ID')}) exceeds the total budget (Rp ${numAmount.toLocaleString('id-ID')}). Do you want to continue anyway?`,
-                [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Continue", onPress: () => doSave(numAmount, resolvedCats) }
-                ]
-            );
+            setModalState({
+                title: "Limits Exceed Budget",
+                description: `The sum of category limits (Rp ${totalCatLimits.toLocaleString('id-ID')}) exceeds the total budget (Rp ${numAmount.toLocaleString('id-ID')}). Do you want to continue anyway?`,
+                cancelText: "Cancel",
+                confirmText: "Continue",
+                onCancel: () => setModalState(null),
+                onConfirm: () => {
+                    setModalState(null);
+                    doSave(numAmount, resolvedCats);
+                }
+            });
             return;
         }
 
@@ -164,7 +181,12 @@ export default function NewBudgetScreen() {
             router.back();
         } catch (e) {
             console.error("Save budget error:", e);
-            Alert.alert("Error", "Failed to save budget. Please try again.");
+            setModalState({
+                title: "Error",
+                description: "Failed to save budget. Please try again.",
+                singleButton: true,
+                onConfirm: () => setModalState(null)
+            });
         } finally {
             setIsSaving(false);
         }
@@ -386,6 +408,13 @@ export default function NewBudgetScreen() {
                 </KeyboardAvoidingView>
 
             </SafeAreaView>
+            
+            {modalState && (
+                <ConfirmModal
+                    visible={!!modalState}
+                    {...modalState}
+                />
+            )}
         </View>
     );
 }

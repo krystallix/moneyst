@@ -45,7 +45,6 @@ import {
 import { useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     Pressable,
     ScrollView,
     Text,
@@ -76,6 +75,8 @@ function hexToRgba(hex: string, alpha = 0.12) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
+import { ConfirmModal } from "@/components/ConfirmModal";
+
 export default function NewCategoryScreen() {
     const { user } = useAuth();
     const insets = useSafeAreaInsets();
@@ -85,11 +86,12 @@ export default function NewCategoryScreen() {
     const [selectedColor, setSelectedColor] = useState(CATEGORY_COLORS[0]);
     const [selectedType, setSelectedType] = useState("expense");
     const [saving, setSaving] = useState(false);
+    const [alertMsg, setAlertMsg] = useState<{ title: string, description: string } | null>(null);
 
     const handleSave = async () => {
         if (!user) return;
         if (!name.trim()) {
-            Alert.alert("Validation", "Category name is required.");
+            setAlertMsg({ title: "Validation", description: "Category name is required." });
             return;
         }
 
@@ -105,7 +107,7 @@ export default function NewCategoryScreen() {
             });
             router.back();
         } catch (e: any) {
-            Alert.alert("Error", e?.message ?? "Could not save category.");
+            setAlertMsg({ title: "Error", description: e?.message ?? "Could not save category." });
         } finally {
             setSaving(false);
         }
@@ -248,6 +250,15 @@ export default function NewCategoryScreen() {
                     </View>
                 </ScrollView>
             </SafeAreaView>
+
+            <ConfirmModal
+                visible={!!alertMsg}
+                title={alertMsg?.title ?? ""}
+                description={alertMsg?.description ?? ""}
+                confirmText="OK"
+                singleButton={true}
+                onConfirm={() => setAlertMsg(null)}
+            />
         </>
     );
 }
