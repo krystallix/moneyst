@@ -15,6 +15,7 @@ import {
     ActivityIndicator,
     Animated,
     Dimensions,
+    Image,
     Modal,
     Pressable,
     ScrollView,
@@ -83,6 +84,8 @@ export default function EditScreen() {
     const [deleting, setDeleting] = useState(false);
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
     const [alertMsg, setAlertMsg] = useState<{ title: string, description: string } | null>(null);
+    const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+    const [showReceiptModal, setShowReceiptModal] = useState(false);
 
     const handleDeleteConfirm = async () => {
         try {
@@ -134,6 +137,7 @@ export default function EditScreen() {
                         setCategoryId(tx.category_id);
                         setAccountId(tx.account_id);
                         if (tx.date) setSelectedDate(new Date(tx.date));
+                        if ((tx as any).receipt_url) setReceiptUrl((tx as any).receipt_url);
                     }
                 } else if (accs.length > 0) {
                     setAccountId(accs[0].id);
@@ -251,6 +255,7 @@ export default function EditScreen() {
     ];
 
     return (
+        <>
         <View className="flex-1 bg-background">
             <StatusBar style="dark" />
             <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
@@ -343,6 +348,38 @@ export default function EditScreen() {
                             </Text>
                         </View>
                     </Animated.View>
+
+                    {/* Receipt image thumbnail */}
+                    {receiptUrl && (
+                        <TouchableOpacity
+                            onPress={() => setShowReceiptModal(true)}
+                            activeOpacity={0.85}
+                            style={{
+                                marginTop: 16,
+                                borderRadius: 14,
+                                overflow: "hidden",
+                                borderWidth: 1,
+                                borderColor: "#E5E7EB",
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.08,
+                                shadowRadius: 6,
+                                elevation: 3,
+                            }}
+                        >
+                            <Image
+                                source={{ uri: receiptUrl }}
+                                style={{ width: 90, height: 120 }}
+                                resizeMode="cover"
+                            />
+                            <View style={{
+                                position: "absolute", bottom: 0, left: 0, right: 0,
+                                backgroundColor: "rgba(0,0,0,0.45)", paddingVertical: 4, alignItems: "center",
+                            }}>
+                                <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>View Receipt</Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 {/* ── CONTROLS & KEYPAD CONTAINER ── */}
@@ -613,6 +650,30 @@ export default function EditScreen() {
                 onConfirm={() => setAlertMsg(null)}
             />
         </View>
+
+        {/* Fullscreen receipt modal */}
+        {receiptUrl && (
+            <Modal
+                visible={showReceiptModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowReceiptModal(false)}
+                statusBarTranslucent
+            >
+                <Pressable
+                    style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.92)", alignItems: "center", justifyContent: "center" }}
+                    onPress={() => setShowReceiptModal(false)}
+                >
+                    <Image
+                        source={{ uri: receiptUrl }}
+                        style={{ width: SCREEN_W * 0.92, height: SCREEN_H * 0.75 }}
+                        resizeMode="contain"
+                    />
+                    <Text style={{ color: "rgba(255,255,255,0.5)", marginTop: 16, fontSize: 13 }}>Tap anywhere to close</Text>
+                </Pressable>
+            </Modal>
+        )}
+        </>
     );
 }
 

@@ -59,6 +59,13 @@ type Split = {
     description: string;
 };
 
+const getLocalYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
 // ─── Loading overlay ────────────────────────────────────────────────────────
 
 function ScanningOverlay({ step }: { step: "uploading" | "analyzing" }) {
@@ -103,7 +110,7 @@ export default function ReceiptReviewScreen() {
 
     // Extracted fields (editable)
     const [merchantName, setMerchantName] = useState("");
-    const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+    const [date, setDate] = useState(getLocalYMD(new Date()));
     const [time, setTime] = useState("");
     const [totalAmount, setTotalAmount] = useState("");
     const [location, setLocation] = useState("");
@@ -143,7 +150,7 @@ export default function ReceiptReviewScreen() {
                 const analysis = await analyzeReceiptLocally(imageUri, expenseCats);
 
                 setMerchantName(analysis.merchant_name ?? "");
-                setDate(analysis.date ?? new Date().toISOString().split("T")[0]);
+                setDate(analysis.date ?? getLocalYMD(new Date()));
                 setTime(analysis.time ?? "");
                 setTotalAmount(analysis.total_amount != null ? String(analysis.total_amount) : "");
                 setLocation(analysis.location ?? "");
@@ -357,9 +364,13 @@ export default function ReceiptReviewScreen() {
                     >
                         {/* ── Receipt Image + Total ── */}
                         <View className="items-center mt-4 mb-6 px-6">
-                            {imageUri ? (
+                            {(receiptUrl || imageUri) ? (
                                 <View style={{ width: 140, height: 190, borderRadius: 16, overflow: "hidden", marginBottom: 16 }}>
-                                    <Image source={{ uri: imageUri as string }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                                    <Image
+                                        source={{ uri: (receiptUrl ?? imageUri) as string }}
+                                        style={{ width: "100%", height: "100%" }}
+                                        resizeMode="cover"
+                                    />
                                 </View>
                             ) : (
                                 <View className="w-[140px] h-[190px] rounded-2xl bg-gray-100 items-center justify-center mb-4">

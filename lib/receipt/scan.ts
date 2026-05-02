@@ -6,7 +6,8 @@ export type SuggestedSplit = {
     category_id: string;
     category_name: string;
     amount: number;
-    reason: string; // e.g. "PPN 10%", "Service Charge"
+    /** Actual item name from receipt, e.g. "Ayam Goreng", "Deodorant", "PPN 10%" */
+    reason: string;
 };
 
 export type ReceiptAnalysis = {
@@ -57,7 +58,7 @@ export async function analyzeReceiptLocally(
 Analyze this receipt image and return a JSON object.
 Default currency is IDR unless clearly stated otherwise.
 
-Available expense categories (use exact id values):
+The user has the following expense categories in their app (you MUST only use these — do not invent new ones):
 ${categoryJson}
 
 Return ONLY a valid JSON object with NO markdown fences, NO explanation:
@@ -75,19 +76,22 @@ Return ONLY a valid JSON object with NO markdown fences, NO explanation:
       "category_id": "<exact id from category list above>",
       "category_name": "<category name>",
       "amount": <number>,
-      "reason": "<label, e.g. PPN 10%, Service Charge 5%>"
+      "reason": "<actual item name from receipt, e.g. Ayam Goreng, Deodorant Rexona, PPN 10%>"
     }
   ] | null
 }
 
 Rules for suggested_splits:
-- ONLY suggest splits when the receipt shows SEPARATE charges like tax (PPN/pajak), service charge, tip, or delivery fee.
-- All split amounts combined MUST sum to total_amount exactly.
-- Include the main purchase as a split too (e.g. subtotal → Shopping or Food category).
-- Match each charge to the most relevant category from the list by name.
-- If there are no separate charges, return null for suggested_splits.
-- Never guess. Only extract what is clearly visible.`;
+- Create ONE split entry PER LINE ITEM visible on the receipt.
+- Also create one split for EACH additional charge shown (PPN/pajak, Service Charge, Tip, Delivery Fee, etc.).
+- All split amounts MUST sum to total_amount exactly.
+- For the "reason" field, use the ACTUAL item or charge name exactly as it appears on the receipt.
+- For "category_id" and "category_name": read the category names from the list above, then pick the category whose name BEST matches the nature of the item or charge. You MUST use only ids and names from the provided list — never invent a category.
+  Example: if the list has a category named "Pajak & Layanan", use that for PPN/Service Charge. If it has "Makanan & Minuman", use that for food items. Match by reading the actual names.
+- If only 1 item with no extra charges → return null for suggested_splits.
+- Never guess amounts not clearly visible on the receipt.`;
 
+    console.log('[Receipt] Categories sent to AI:', categoryJson);
     console.log('[Receipt] Calling vision AI with base64 image...');
 
     const res = await fetch(VERCEL_AI_URL, {
@@ -107,7 +111,7 @@ Rules for suggested_splits:
                     ],
                 },
             ],
-            max_tokens: 1500,
+            max_tokens: 2000,
         }),
     });
 
@@ -119,7 +123,7 @@ Rules for suggested_splits:
 
     const json = await res.json();
     const content: string = json.choices?.[0]?.message?.content ?? '{}';
-    console.log('[Receipt] AI response:', content.slice(0, 200));
+    console.log('[Receipt] AI response:', content.slice(0, 400));
 
     const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
