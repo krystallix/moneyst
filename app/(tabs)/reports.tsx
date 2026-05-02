@@ -27,6 +27,13 @@ type AppProfile = {
     preferred_currency?: string | null;
 };
 
+const getLocalYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
 export default function ReportScreen() {
     const { user, loading } = useAuth();
     const [username, setUsername] = useState<string | null>(null);
@@ -84,23 +91,23 @@ export default function ReportScreen() {
             const now = new Date();
 
             if (filter === "This Month") {
-                start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-                end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+                start = getLocalYMD(new Date(now.getFullYear(), now.getMonth(), 1));
+                end = getLocalYMD(new Date(now.getFullYear(), now.getMonth() + 1, 0));
             } else if (filter === "Last Month") {
-                start = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split("T")[0];
-                end = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split("T")[0];
+                start = getLocalYMD(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+                end = getLocalYMD(new Date(now.getFullYear(), now.getMonth(), 0));
             } else if (filter === "Last 3 Months") {
-                start = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().split("T")[0];
-                end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+                start = getLocalYMD(new Date(now.getFullYear(), now.getMonth() - 2, 1));
+                end = getLocalYMD(new Date(now.getFullYear(), now.getMonth() + 1, 0));
             } else if (filter === "Last 6 Months") {
-                start = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().split("T")[0];
-                end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+                start = getLocalYMD(new Date(now.getFullYear(), now.getMonth() - 5, 1));
+                end = getLocalYMD(new Date(now.getFullYear(), now.getMonth() + 1, 0));
             } else if (filter === "This Year") {
-                start = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0];
-                end = new Date(now.getFullYear(), 11, 31).toISOString().split("T")[0];
+                start = getLocalYMD(new Date(now.getFullYear(), 0, 1));
+                end = getLocalYMD(new Date(now.getFullYear(), 11, 31));
             } else if (filter === "Custom") {
-                start = customStart.toISOString().split("T")[0];
-                end = customEnd.toISOString().split("T")[0];
+                start = getLocalYMD(customStart);
+                end = getLocalYMD(customEnd);
             }
 
             const [monthlyStats, catBreakdown, trendLine, recurringInsights] = await Promise.all([

@@ -4,6 +4,13 @@ import { supabase } from '@/lib/supabase';
 // CRUD Operations for transactions
 // ==========================================
 
+const getLocalYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
 /**
  * Get all records from transactions
  */
@@ -135,12 +142,8 @@ export const getTransactionsByDate = async (userId: string, targetDate: string) 
  */
 export const getMonthlyStats = async (userId: string, customStartDate?: string, customEndDate?: string) => {
     const now = new Date();
-    const firstDay = customStartDate ?? new Date(now.getFullYear(), now.getMonth(), 1)
-        .toISOString()
-        .split('T')[0];
-    const lastDay = customEndDate ?? new Date(now.getFullYear(), now.getMonth() + 1, 0)
-        .toISOString()
-        .split('T')[0];
+    const firstDay = customStartDate ?? getLocalYMD(new Date(now.getFullYear(), now.getMonth(), 1));
+    const lastDay = customEndDate ?? getLocalYMD(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
     const { data, error } = await supabase
         .schema('moneyst')
@@ -168,8 +171,8 @@ export const getMonthlyStats = async (userId: string, customStartDate?: string, 
  */
 export const getCategoryBreakdown = async (userId: string, startDate?: string, endDate?: string) => {
     const now = new Date();
-    const firstDay = startDate ?? new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const lastDay = endDate ?? new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const firstDay = startDate ?? getLocalYMD(new Date(now.getFullYear(), now.getMonth(), 1));
+    const lastDay = endDate ?? getLocalYMD(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
     const { data, error } = await supabase
         .schema('moneyst')
@@ -223,8 +226,8 @@ export const getTrendLine = async (userId: string) => {
     // Generate the last 6 months ranges
     for (let i = 5; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const firstDay = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
-        const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+        const firstDay = getLocalYMD(new Date(d.getFullYear(), d.getMonth(), 1));
+        const lastDay = getLocalYMD(new Date(d.getFullYear(), d.getMonth() + 1, 0));
         
         const monthLabel = d.toLocaleString('default', { month: 'short' });
 
@@ -258,8 +261,8 @@ export const getTrendLine = async (userId: string) => {
 export const getRecurringInsights = async (userId: string, startDate?: string, endDate?: string) => {
     const now = new Date();
     // Use a slightly larger window if possible to catch patterns better, but respect provided dates
-    const firstDay = startDate ?? new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().split('T')[0];
-    const lastDay = endDate ?? new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const firstDay = startDate ?? getLocalYMD(new Date(now.getFullYear(), now.getMonth() - 2, 1));
+    const lastDay = endDate ?? getLocalYMD(new Date(now.getFullYear(), now.getMonth() + 1, 0));
 
     const { data, error } = await supabase
         .schema('moneyst')

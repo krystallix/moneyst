@@ -24,6 +24,13 @@ function getSafeIcon(iconName: string | undefined | null) {
     return IconComp || HelpCircle;
 }
 
+const getLocalYMD = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
 export default function NewBudgetScreen() {
     const { user } = useAuth();
     const insets = useSafeAreaInsets();
@@ -134,24 +141,24 @@ export default function NewBudgetScreen() {
         setIsSaving(true);
         try {
             const now = new Date();
-            let startDate = now.toISOString().split('T')[0];
+            let startDate = getLocalYMD(now);
             let endDate: string | null = null;
 
             if (period === 'monthly') {
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+                startDate = getLocalYMD(new Date(now.getFullYear(), now.getMonth(), 1));
+                endDate = getLocalYMD(new Date(now.getFullYear(), now.getMonth() + 1, 0));
             } else if (period === 'weekly') {
                 const day = now.getDay() || 7;
                 const diff = now.getDate() - day + 1;
                 const mon = new Date(now.setDate(diff));
-                startDate = mon.toISOString().split('T')[0];
+                startDate = getLocalYMD(mon);
                 const sun = new Date(now.setDate(mon.getDate() + 6));
-                endDate = sun.toISOString().split('T')[0];
+                endDate = getLocalYMD(sun);
             } else if (period === 'yearly') {
-                startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-                endDate = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
+                startDate = getLocalYMD(new Date(now.getFullYear(), 0, 1));
+                endDate = getLocalYMD(new Date(now.getFullYear(), 11, 31));
             } else if (period === 'lifetime') {
-                startDate = now.toISOString().split('T')[0];
+                startDate = getLocalYMD(now);
                 endDate = null;
             }
 
